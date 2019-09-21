@@ -1,8 +1,9 @@
 from django.db import models
+from django.utils.timezone import now
 
 
 class LogEntry(models.Model):
-    datetime_added = models.DateTimeField(auto_now_add=True)
+    datetime_added = models.DateTimeField(default=now)
     endpoint_name = models.CharField(max_length=255)
     source_ip = models.CharField(max_length=255)
     path = models.CharField(max_length=255)

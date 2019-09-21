@@ -43,7 +43,7 @@ class TokenWhitelistEntryManager(models.Manager):
 
 
 class TokenWhitelistEntry(models.Model):
-    datetime_added = models.DateTimeField(auto_now_add=True)
+    datetime_added = models.DateTimeField(default=now)
     api_account_member = models.ForeignKey(
         'ApiAccountMember',
         related_name='p_token_whitelist_entries',
