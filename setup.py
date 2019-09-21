@@ -7,7 +7,7 @@ setup(
     author='Pronym',
     author_email='gregg@pronym.com',
     packages=['pronym_api'],
-    install_requires=['Django>=2.4'],
+    install_requires=['django==2.2.4', 'django-nose==1.4.6'],
     version='0.1',
     license='MIT',
     description=(

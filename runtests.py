@@ -29,26 +29,15 @@ sys.path.insert(0, APP_DIR)
 
 
 SETTINGS_DICT = {
-    "INSTALLED_APPS": (
-        # Default Django apps
-        "django.contrib.admin",
-        "django.contrib.auth",
-        "django.contrib.contenttypes",
-        "django.contrib.sessions",
-        "django.contrib.messages",
-        "django.contrib.staticfiles",
-        "django.contrib.gis",
-        # Our tests
-        "bootstrap4",
-        "tests",
-    ),
-    "ROOT_URLCONF": "tests.urls",
+    "INSTALLED_APPS": (),
+    "ROOT_URLCONF": "tests.conf.urls",
     "DATABASES": {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}},
     "MIDDLEWARE": (
         "django.contrib.sessions.middleware.SessionMiddleware",
         "django.contrib.auth.middleware.AuthenticationMiddleware",  # required for django.contrib.admin
         "django.contrib.messages.middleware.MessageMiddleware",  # required for django.contrib.admin
     ),
+    "TEST_RUNNER": 'django_nose.NoseTestSuiteRunner',
     "STATIC_URL": "/static/",
     "TEMPLATES": [
         {
@@ -66,14 +55,7 @@ SETTINGS_DICT = {
                 ]
             },
         }
-    ],
-    "BOOTSTRAP4": {
-        "theme_url": "//example.com/theme.css",
-        "javascript_in_head": True,
-        "required_css_class": "bootstrap4-req",
-        "error_css_class": "bootstrap4-err",
-        "success_css_class": "bootstrap4-bound",
-    },
+    ]
 }
 
 

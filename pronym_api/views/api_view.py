@@ -85,6 +85,9 @@ class ApiView(View):
         # Implement your own authentication!
         return True
 
+    def check_method_allowed(self):
+        return self.request.method in self.methods.keys()
+
     def create_log_entry(self, response):
         # Implement your own logging!
         pass
@@ -98,7 +101,7 @@ class ApiView(View):
 
     def dispatch(self, request, *args, **kwargs):
         # Check if this method is allowed on this endpoint.
-        if not self.check_method_allow():
+        if not self.check_method_allowed():
             response = HttpResponse(status=405)
         # Check if the user is allowed to be here.
         elif not self.check_authentication():
