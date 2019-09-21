@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 
 setup(
-    name='pronym-django-api',
+    name='pronym_django',
     url='https://github.com/greggg230/pronym-django-api',
     author='Pronym',
     author_email='gregg@pronym.com',
