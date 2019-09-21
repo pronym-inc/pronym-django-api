@@ -29,7 +29,13 @@ sys.path.insert(0, APP_DIR)
 
 
 SETTINGS_DICT = {
-    "INSTALLED_APPS": (),
+    "INSTALLED_APPS": (
+        # Default Django apps
+        "django.contrib.auth",
+        "django.contrib.contenttypes",
+        "django.contrib.sessions",
+        "pronym_api"
+    ),
     "ROOT_URLCONF": "tests.conf.urls",
     "DATABASES": {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}},
     "MIDDLEWARE": (
