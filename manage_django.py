@@ -65,7 +65,7 @@ SETTINGS_DICT = {
 }
 
 
-def run_tests():
+def do_command(command):
     # Making Django run this way is a two-step process. First, call
     # settings.configure() to give Django settings to work with:
     from django.conf import settings
@@ -78,6 +78,19 @@ def run_tests():
 
     django.setup()
 
+    if command == 'test':
+        run_tests(settings)
+    elif command == 'makemigrations':
+        make_migrations()
+
+
+def make_migrations():
+    from django.core.management import call_command
+
+    call_command('makemigrations', 'pronym_api', '--dry-run', '--verbosity', '3')
+
+
+def run_tests(settings):
     # Now we instantiate a test runner...
     from django.test.utils import get_runner
 
@@ -90,4 +103,4 @@ def run_tests():
 
 
 if __name__ == "__main__":
-    run_tests()
+    do_command(sys.argv[1])

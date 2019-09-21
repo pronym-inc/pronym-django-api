@@ -1,6 +1,6 @@
 from django.test import RequestFactory, TestCase
 
-from .test_views import SampleApiView
+from .test_views.sample import SampleApiView
 
 
 class ExampleTest(TestCase):

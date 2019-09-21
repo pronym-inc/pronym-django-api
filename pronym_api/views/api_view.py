@@ -5,6 +5,8 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
 
+from pronym_api.models import LogEntry, TokenWhitelistEntry
+
 from .processor import NullProcessor
 from .serializer import NullSerializer
 from .validator import NullValidator
@@ -81,16 +83,53 @@ class ApiView(View):
     # Which fields should we scrub from the response data for logging?
     redacted_response_payload_fields = []
 
+    def __init__(self, *args, **kwargs):
+        View.__init__(self, *args, **kwargs)
+        self.authenticated_account_member = None
+
     def check_authentication(self):
-        # Implement your own authentication!
-        return True
+        """Checks JWT authentication of user from authorization
+        header.  Also populates self.authenticated_account_member
+        if authentication succeeds."""
+        self.authenticated_account_member = None
+        if not self.should_check_authentication():
+            return True
+        auth_header = self.request.META.get('HTTP_AUTHORIZATION')
+        if auth_header is None:
+            return False
+        auth_split = auth_header.split()
+        if len(auth_split) != 2 or auth_split[0].lower() != 'token':
+            return False
+        token = auth_split[1]
+        self.authenticated_account_member = TokenWhitelistEntry\
+            .objects.get_account_member_for_token(token)
+        return self.authenticated_account_member is not None
 
     def check_method_allowed(self):
         return self.request.method in self.methods.keys()
 
     def create_log_entry(self, response):
-        # Implement your own logging!
-        pass
+        header_string = self.get_redacted_header_str()
+        redacted_request_payload_string = \
+            self.get_redacted_request_payload_str()
+        redacted_response_payload_string = \
+            self.get_redacted_response_payload_str(response)
+
+        return LogEntry.objects.create(
+            endpoint_name=self.get_endpoint_name(),
+            source_ip=self.request.META.get(
+                'HTTP_X_FORWARDED_FOR', 'Unknown'),
+            path=self.request.path,
+            host=self.request.get_host(),
+            port=self.request.get_port(),
+            is_authenticated=self.authenticated_account_member is not None,
+            authenticated_profile=self.authenticated_account_member,
+            request_method=self.request.method,
+            request_headers=header_string,
+            request_payload=redacted_request_payload_string,
+            response_payload=redacted_response_payload_string,
+            status_code=response.status_code
+        )
 
     def create_validation_error_response(
             self, validation_exception, status=400):
@@ -146,7 +185,7 @@ class ApiView(View):
             try:
                 self._raw_request_data = loads(self.request.body)
             except JSONDecodeError:
-                self._raw_request_data = None
+                self._raw_request_data = {}
         return self._raw_request_data
 
     def get_redacted_header_str(self):
