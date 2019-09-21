@@ -6,7 +6,10 @@ setup(
     url='https://github.com/greggg230/pronym-django-api',
     author='Pronym',
     author_email='gregg@pronym.com',
-    packages=find_packages('pronym_api'),
+    packages=find_packages(where='pronym_api'),
+    package_dir={
+        '': 'pronym_api'
+    },
     install_requires=['django==2.2.4', 'django-nose==1.4.6'],
     version='0.1',
     license='MIT',
