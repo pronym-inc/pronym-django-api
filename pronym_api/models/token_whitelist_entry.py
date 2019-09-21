@@ -1,7 +1,11 @@
+import random
+
 from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
 from django.utils.timezone import now
 
 import jwt
@@ -44,6 +48,7 @@ class TokenWhitelistEntryManager(models.Manager):
 
 class TokenWhitelistEntry(models.Model):
     datetime_added = models.DateTimeField(default=now)
+    token_entropy = models.PositiveIntegerField(null=True)
     api_account_member = models.ForeignKey(
         'ApiAccountMember',
         related_name='p_token_whitelist_entries',
@@ -62,7 +67,7 @@ class TokenWhitelistEntry(models.Model):
         data = {
             'exp': self.get_expiration_date().timestamp(),
             'iat': self.datetime_added.timestamp(),
-            'jti': self.id,
+            'jti': self.token_entropy,
             'sub': 'bridgenet',
             'aud': 'bridgenet',
             'nbf': self.datetime_added.timestamp(),
@@ -83,7 +88,7 @@ class TokenWhitelistEntry(models.Model):
     def validate(self, payload):
         if self.is_expired():
             return False
-        if int(payload['jti']) != self.id:
+        if int(payload['jti']) != self.token_entropy:
             return False
         if self.datetime_added.timestamp() != float(payload['iat']):
             return False
@@ -96,3 +101,16 @@ class TokenWhitelistEntry(models.Model):
         if payload['iss'] != 'bridgenetapi':
             return False
         return True
+
+
+@receiver(pre_save, sender=TokenWhitelistEntry)
+def pre_save_token(sender, instance, **kwargs):
+    if instance.token_entropy is None:
+        # Generate a unique int.
+        while True:
+            candidate = random.randint(1, 100000000)
+            try:
+                sender.objects.get(token_entry=candidate)
+            except sender.DoesNotExist:
+                break
+        instance.token_entropy = candidate
