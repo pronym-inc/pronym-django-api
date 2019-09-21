@@ -38,7 +38,7 @@ class TokenWhitelistEntryManager(models.Manager):
             issuer="bridgenetapi")
         entry_id = payload['jti']
         try:
-            entry = self.get(id=entry_id)
+            entry = self.get(token_entropy=entry_id)
         except self.model.DoesNotExist:
             return None
         if not entry.validate(payload):
@@ -48,7 +48,7 @@ class TokenWhitelistEntryManager(models.Manager):
 
 class TokenWhitelistEntry(models.Model):
     datetime_added = models.DateTimeField(default=now)
-    token_entropy = models.PositiveIntegerField(null=True)
+    token_entropy = models.PositiveIntegerField(null=True, unique=True)
     api_account_member = models.ForeignKey(
         'ApiAccountMember',
         related_name='p_token_whitelist_entries',
