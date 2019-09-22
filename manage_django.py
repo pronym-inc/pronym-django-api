@@ -34,9 +34,11 @@ SETTINGS_DICT = {
         "django.contrib.auth",
         "django.contrib.contenttypes",
         "django.contrib.sessions",
+        "django_nose",
+        "tests",
         "pronym_api"
     ),
-    "ROOT_URLCONF": "tests.conf.urls",
+    "ROOT_URLCONF": "tests.urls",
     "DATABASES": {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}},
     "MIDDLEWARE": (
         "django.contrib.sessions.middleware.SessionMiddleware",
@@ -45,6 +47,11 @@ SETTINGS_DICT = {
     ),
     "TEST_RUNNER": 'django_nose.NoseTestSuiteRunner',
     "STATIC_URL": "/static/",
+    "TOKEN_EXPIRATION_MINUTES": 120,
+    "API_SECRET": "shhhdontellanyone",
+    "JWT_SUB": "pronym",
+    "JWT_ISS": "pronymapi",
+    "JWT_AUD": "pronym",
     "TEMPLATES": [
         {
             "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -65,39 +72,55 @@ SETTINGS_DICT = {
 }
 
 
-def do_command(command):
+def setup_settings(**extra_settings):
     # Making Django run this way is a two-step process. First, call
     # settings.configure() to give Django settings to work with:
     from django.conf import settings
 
-    settings.configure(**SETTINGS_DICT)
+    my_settings = {}
+    my_settings.update(SETTINGS_DICT)
+    my_settings.update(extra_settings)
+
+    settings.configure(**my_settings)
 
     # Then, call django.setup() to initialize the application registry
     # and other bits:
     import django
 
     django.setup()
+    return settings
+
+
+def do_command(command):
 
     if command == 'test':
-        run_tests(settings)
+        run_tests()
+    elif command == 'coverage':
+        run_tests(NOSE_ARGS=[
+            '--with-coverage',
+            '--cover-package=pronym_api'
+        ])
     elif command == 'makemigrations':
         make_migrations()
 
 
 def make_migrations():
+    setup_settings()
+
     from django.core.management import call_command
 
     call_command('makemigrations', 'pronym_api', '--dry-run', '--verbosity', '3')
 
 
-def run_tests(settings):
+def run_tests(**extra_settings):
     # Now we instantiate a test runner...
     from django.test.utils import get_runner
 
-    TestRunner = get_runner(settings)
+    settings = setup_settings(**extra_settings)
 
+    test_runner_cls = get_runner(settings)
     # And then we run tests and return the results.
-    test_runner = TestRunner(verbosity=2, interactive=True)
+    test_runner = test_runner_cls(verbosity=2, interactive=True)
     failures = test_runner.run_tests(["tests"])
     sys.exit(failures)
 

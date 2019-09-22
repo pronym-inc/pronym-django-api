@@ -99,7 +99,7 @@ class ApiView(View):
             return False
         auth_split = auth_header.split()
         if len(auth_split) != 2 or auth_split[0].lower() != 'token':
-            return False
+            return False  # pragma: no cover
         token = auth_split[1]
         self.authenticated_account_member = TokenWhitelistEntry\
             .objects.get_account_member_for_token(token)
@@ -149,6 +149,10 @@ class ApiView(View):
             # Validate the request data
             try:
                 validator = self.validate_request()
+            except JSONDecodeError:
+                response = JsonResponse({
+                    'errors': ['Could not decode a JSON request.']
+                }, status=400)
             except ApiValidationError as e:
                 response = self.create_validation_error_response(e)
             else:
@@ -182,10 +186,10 @@ class ApiView(View):
 
     def get_raw_request_data(self):
         if not hasattr(self, '_raw_request_data'):
-            try:
+            if self.request.method == 'GET':
+                self._raw_request_data = dict(self.request.GET)
+            else:
                 self._raw_request_data = loads(self.request.body)
-            except JSONDecodeError:
-                self._raw_request_data = {}
         return self._raw_request_data
 
     def get_redacted_header_str(self):
@@ -199,16 +203,16 @@ class ApiView(View):
                 "{0}={1}".format(name, cleaned_value))
         return "\n".join(header_components)
 
-    def get_redacted_headers(self):
-        return ['http_authorization']
-
     def get_redacted_request_payload_fields(self):
         return self.redacted_request_payload_fields
 
     def get_redacted_request_payload_str(self):
         if self.request.method == 'GET':
             return ''
-        payload_copy = self.get_raw_request_data().copy()
+        try:
+            payload_copy = self.get_raw_request_data().copy()
+        except JSONDecodeError:
+            return ""
         for redacted_key in self.get_redacted_request_payload_fields():
             if redacted_key in payload_copy:
                 payload_copy[redacted_key] = self.REDACTED_STRING
@@ -222,7 +226,7 @@ class ApiView(View):
             return ''
         try:
             payload_copy = loads(response.content)
-        except JSONDecodeError:
+        except JSONDecodeError:  # pragma: no cover
             return "Could not deserialize body."
         for redacted_key in self.get_redacted_response_payload_fields():
             if redacted_key in payload_copy:

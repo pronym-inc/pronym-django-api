@@ -30,12 +30,15 @@ class TokenWhitelistEntryManager(models.Manager):
         return entry
 
     def get_account_member_for_token(self, token):
-        payload = jwt.decode(
-            token,
-            settings.API_SECRET,
-            algorithms=['HS256'],
-            audience="bridgenet",
-            issuer="bridgenetapi")
+        try:
+            payload = jwt.decode(
+                token,
+                settings.API_SECRET,
+                algorithms=['HS256'],
+                audience=settings.JWT_AUD,
+                issuer=settings.JWT_ISS)
+        except jwt.exceptions.InvalidTokenError:
+            return None
         entry_id = payload['jti']
         try:
             entry = self.get(token_entropy=entry_id)
@@ -68,10 +71,10 @@ class TokenWhitelistEntry(models.Model):
             'exp': self.get_expiration_date().timestamp(),
             'iat': self.datetime_added.timestamp(),
             'jti': self.token_entropy,
-            'sub': 'bridgenet',
-            'aud': 'bridgenet',
+            'sub': settings.JWT_SUB,
+            'aud': settings.JWT_AUD,
             'nbf': self.datetime_added.timestamp(),
-            'iss': 'bridgenetapi'
+            'iss': settings.JWT_ISS
         }
         return jwt.encode(
             data,
@@ -88,17 +91,11 @@ class TokenWhitelistEntry(models.Model):
     def validate(self, payload):
         if self.is_expired():
             return False
-        if int(payload['jti']) != self.token_entropy:
-            return False
         if self.datetime_added.timestamp() != float(payload['iat']):
             return False
         if self.datetime_added.timestamp() != float(payload['nbf']):
             return False
-        if self.get_expiration_date().timestamp() != float(payload['exp']):
-            return False
-        if payload['sub'] != 'bridgenet':
-            return False
-        if payload['iss'] != 'bridgenetapi':
+        if payload['sub'] != settings.JWT_SUB:
             return False
         return True
 
@@ -110,7 +107,7 @@ def pre_save_token(sender, instance, **kwargs):
         while True:
             candidate = random.randint(1, 100000000)
             try:
-                sender.objects.get(token_entry=candidate)
+                sender.objects.get(token_entropy=candidate)
             except sender.DoesNotExist:
                 break
         instance.token_entropy = candidate

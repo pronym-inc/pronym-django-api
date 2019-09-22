@@ -13,7 +13,7 @@ class LogEntry(models.Model):
     authenticated_profile = models.ForeignKey(
         'ApiAccountMember',
         null=True,
-        related_name='+',
+        related_name='log_entries',
         on_delete=models.CASCADE)
     request_method = models.CharField(max_length=255)
     request_headers = models.TextField()

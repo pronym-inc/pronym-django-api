@@ -1,6 +1,9 @@
 test:
-	docker build -t sanic/test-image .
-	docker run -t sanic/test-image python3 /app/manage_django.py test
+	docker build -t pronym/test-image .
+	docker run -t pronym/test-image python3 /app/manage_django.py test
+coverage:
+	docker build -t pronym/test-image .
+	docker run -t pronym/test-image python3 /app/manage_django.py coverage
 makemigrations:
-	docker build -t sanic/test-image .
-	docker run -t sanic/test-image python3 /app/manage_django.py makemigrations
+	docker build -t pronym/test-image .
+	docker run -t pronym/test-image python3 /app/manage_django.py makemigrations

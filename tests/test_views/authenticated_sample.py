@@ -8,6 +8,7 @@ from pronym_api.views.validator import FormValidator
 
 class TestValidator(FormValidator):
     name = forms.CharField()
+    color = forms.CharField(required=False)
     email = forms.CharField(required=False)
 
 
@@ -20,11 +21,12 @@ class TestProcessor(Processor):
 class TestSerializer(Serializer):
     def serialize(self):
         return {
-            'my_data': self.processing_artifact
+            'my_data': self.processing_artifact,
+            'chonus': 5
         }
 
 
-class SampleApiView(ApiView):
+class AuthenticatedSampleApiView(ApiView):
     endpoint_name = 'sample-api'
 
     methods = {
@@ -32,5 +34,13 @@ class SampleApiView(ApiView):
             'validator': TestValidator,
             'processor': TestProcessor,
             'serializer': TestSerializer
+        },
+        'POST': {
+            'validator': TestValidator,
+            'processor': TestProcessor,
+            'serializer': TestSerializer
         }
     }
+
+    redacted_request_payload_fields = ['color']
+    redacted_response_payload_fields = ['chonus']
