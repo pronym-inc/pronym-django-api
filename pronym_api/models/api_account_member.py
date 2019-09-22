@@ -9,11 +9,11 @@ class ApiAccountMember(models.Model):
 
     api_account = models.ForeignKey(
         'ApiAccount',
-        related_name='p_members',
+        related_name='members',
         on_delete=models.CASCADE)
     user = models.ForeignKey(
         'auth.User',
-        related_name='p_api_members',
+        related_name='api_members',
         on_delete=models.CASCADE)
 
     def __str__(self):

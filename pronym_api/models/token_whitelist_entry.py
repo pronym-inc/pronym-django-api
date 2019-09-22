@@ -54,7 +54,7 @@ class TokenWhitelistEntry(models.Model):
     token_entropy = models.PositiveIntegerField(null=True, unique=True)
     api_account_member = models.ForeignKey(
         'ApiAccountMember',
-        related_name='p_token_whitelist_entries',
+        related_name='token_whitelist_entries',
         on_delete=models.CASCADE)
 
     objects = TokenWhitelistEntryManager()
