@@ -1,9 +1,9 @@
 test:
 	docker build -t pronym/test-image .
-	docker run -t pronym/test-image python3 /app/manage_django.py test
+	docker run --rm -t pronym/test-image python3 /app/manage_django.py test
 coverage:
 	docker build -t pronym/test-image .
-	docker run -t pronym/test-image python3 /app/manage_django.py coverage
+	docker run --rm -t pronym/test-image python3 /app/manage_django.py coverage
 makemigrations:
 	docker build -t pronym/test-image .
-	docker run -t pronym/test-image python3 /app/manage_django.py makemigrations
+	docker run --rm -t pronym/test-image python3 /app/manage_django.py makemigrations
