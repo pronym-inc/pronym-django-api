@@ -16,7 +16,7 @@ class ApiAccountMember(models.Model):
         related_name='api_members',
         on_delete=models.CASCADE)
 
-    def __str__(self):
+    def __str__(self):  # pragma: no cover
         return "{0} ({1})".format(
             self.user.username,
             self.api_account.name)

@@ -21,7 +21,7 @@ class LogEntry(models.Model):
     response_payload = models.TextField()
     status_code = models.PositiveIntegerField()
 
-    def __str__(self):
+    def __str__(self):  # pragma: no cover
         return "[{0}] {1} {2} -> {3}".format(
             self.datetime_added,
             self.request_method,

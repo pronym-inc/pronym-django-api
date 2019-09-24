@@ -2,7 +2,8 @@ from setuptools import find_packages, setup
 
 install_dependencies = ['django==2.2.4', 'PyJWT==1.7.1']
 test_dependencies = [
-    'django-nose==1.4.6', 'factory_boy==2.12.0', 'coverage==4.5.4']
+    'pytest-django==3.5.1', 'factory_boy==2.12.0', 'coverage==4.5.4',
+    'pytest-cov==2.7.1']
 
 
 setup(
