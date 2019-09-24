@@ -34,7 +34,6 @@ SETTINGS_DICT = {
         "django.contrib.auth",
         "django.contrib.contenttypes",
         "django.contrib.sessions",
-        "django_nose",
         "tests",
         "pronym_api"
     ),
