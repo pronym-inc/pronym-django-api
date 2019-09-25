@@ -187,7 +187,17 @@ class ApiView(View):
     def get_raw_request_data(self):
         if not hasattr(self, '_raw_request_data'):
             if self.request.method == 'GET':
-                self._raw_request_data = dict(self.request.GET)
+                # We use the GET data, but by default we'll get back entries
+                # as lists, which can be problematic.  So we have to do some
+                # conversion.  We will assume we're always just getting 1 value
+                # per parameter.
+                self._raw_request_data = {
+                    key: (
+                        value_list[0]
+                        if isinstance(value_list, list)
+                        else value_list)
+                    for key, value_list in self.request.GET.items()
+                }
             else:
                 self._raw_request_data = loads(self.request.body)
         return self._raw_request_data
