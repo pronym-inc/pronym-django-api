@@ -105,6 +105,9 @@ class ApiView(View):
             .objects.get_account_member_for_token(token)
         return self.authenticated_account_member is not None
 
+    def check_authorization(self):
+        return True
+
     def check_method_allowed(self):
         return self.request.method in self.methods.keys()
 
@@ -145,6 +148,8 @@ class ApiView(View):
         # Check if the user is allowed to be here.
         elif not self.check_authentication():
             response = HttpResponse(status=401)
+        elif not self.check_authorization():
+            response = HttpResponse(status=403)
         else:
             # Validate the request data
             try:
