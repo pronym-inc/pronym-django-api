@@ -7,7 +7,7 @@ test_dependencies = [
 
 
 setup(
-    name='pronym_django',
+    name='pronym_api',
     url='https://github.com/greggg230/pronym-django-api',
     author='Pronym',
     author_email='gregg@pronym.com',
