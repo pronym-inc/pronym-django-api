@@ -13,6 +13,10 @@ class NullValidator(ValidatorMixin):
         return True
 
 
+class Validator(NullValidator):
+    pass
+
+
 class FormValidator(ValidatorMixin, Form):
     pass
 
