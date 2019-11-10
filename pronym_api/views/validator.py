@@ -14,7 +14,8 @@ class NullValidator(ValidatorMixin):
 
 
 class Validator(NullValidator):
-    pass
+    def __init__(self, data, *args, **kwargs):
+        self.data = data
 
 
 class FormValidator(ValidatorMixin, Form):
