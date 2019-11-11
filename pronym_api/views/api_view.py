@@ -204,7 +204,10 @@ class ApiView(View):
                     for key, value_list in self.request.GET.items()
                 }
             else:
-                self._raw_request_data = loads(self.request.body)
+                if len(self.request.body) == 0:
+                    self._raw_request_data = {}
+                else:
+                    self._raw_request_data = loads(self.request.body)
         return self._raw_request_data
 
     def get_redacted_header_str(self):

@@ -15,7 +15,7 @@ setup(
     install_requires=install_dependencies,
     tests_require=test_dependencies,
     extras_require={'test': test_dependencies},
-    version='1.0.5',
+    version='1.0.6',
     license='MIT',
     description=(
         'A thin wrapper around Django views for easily customized '
