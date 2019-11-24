@@ -1,8 +1,8 @@
 from setuptools import find_packages, setup
 
-install_dependencies = ['django==2.2.4', 'PyJWT==1.7.1']
+install_dependencies = ['django==2.2.4', 'PyJWT==1.7.1', 'factory_boy==2.12.0']
 test_dependencies = [
-    'pytest-django==3.5.1', 'factory_boy==2.12.0', 'coverage==4.5.4',
+    'pytest-django==3.5.1', 'coverage==4.5.4',
     'pytest-cov==2.7.1']
 
 
@@ -15,7 +15,7 @@ setup(
     install_requires=install_dependencies,
     tests_require=test_dependencies,
     extras_require={'test': test_dependencies},
-    version='1.0.6',
+    version='1.0.7',
     license='MIT',
     description=(
         'A thin wrapper around Django views for easily customized '

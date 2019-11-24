@@ -9,8 +9,7 @@ from django.test import TestCase
 import jwt
 
 from pronym_api.models import TokenWhitelistEntry
-
-from tests.factories import (
+from pronym_api.test_utils.factories import (
     ApiAccountFactory, ApiAccountMemberFactory, TokenWhitelistEntryFactory)
 
 

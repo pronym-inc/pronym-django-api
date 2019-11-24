@@ -4,8 +4,7 @@ from pronym_api.api.get_token import GetTokenApiView
 from pronym_api.test_utils.api_testcase import PronymApiTestCase
 from tests.test_views.authenticated_sample import (
     AuthenticatedSampleApiView)
-
-from tests.factories import ApiAccountMemberFactory
+from pronym_api.test_utils.factories import ApiAccountMemberFactory
 
 
 class GetTokenTest(PronymApiTestCase):

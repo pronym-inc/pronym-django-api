@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from tests.factories import ApiAccountFactory
+from pronym_api.test_utils.factories import ApiAccountFactory
 
 
 class ApiAccountTestCase(TestCase):

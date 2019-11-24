@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from tests.factories import ApiAccountMemberFactory
+from pronym_api.test_utils.factories import ApiAccountMemberFactory
 
 
 class ApiAccountMemberTestCase(TestCase):
