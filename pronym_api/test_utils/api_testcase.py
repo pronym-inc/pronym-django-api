@@ -20,6 +20,10 @@ class PronymApiTestCase(TestCase):
         value = "Token {0}".format(auth_token)
         return {'HTTP_AUTHORIZATION': value}
 
+    def get_authenticated_user(self):
+        if hasattr(self, 'authenticated_user'):
+            return self.authenticated_user
+
     def get_url(self):
         return self.base_url
 
@@ -43,7 +47,7 @@ class PronymApiTestCase(TestCase):
 
     def send_request(
             self, method, data=None, url=None, use_authentication=None,
-            auth_token=None, view=None, **data_kwargs):
+            auth_token=None, view=None, user=None, **data_kwargs):
         if use_authentication is None:
             use_authentication = self.should_use_authentication()
         if data is None:
@@ -61,6 +65,10 @@ class PronymApiTestCase(TestCase):
         request = handler(request_url, **kwargs)
         if view is None:
             view = self.view_class.as_view()
+        if user is None:
+            user = self.get_authenticated_user()
+        if user is not None:
+            request.user = user
         return view(request)
 
     def should_use_authentication(self):
