@@ -32,6 +32,9 @@ class PronymApiTestCase(TestCase):
         my_data.update(data)
         return my_data
 
+    def get_view_kwargs(self):
+        return {}
+
     def post(self, **kwargs):
         return self.send_request('post', **kwargs)
 
@@ -47,7 +50,8 @@ class PronymApiTestCase(TestCase):
 
     def send_request(
             self, method, data=None, url=None, use_authentication=None,
-            auth_token=None, view=None, user=None, **data_kwargs):
+            auth_token=None, view=None, user=None, view_kwargs=None,
+            **data_kwargs):
         if use_authentication is None:
             use_authentication = self.should_use_authentication()
         if data is None:
@@ -69,7 +73,9 @@ class PronymApiTestCase(TestCase):
             user = self.get_authenticated_user()
         if user is not None:
             request.user = user
-        return view(request)
+        if view_kwargs is None:
+            view_kwargs = self.get_view_kwargs()
+        return view(request, **view_kwargs)
 
     def should_use_authentication(self):
         return self.view_class.require_authentication
