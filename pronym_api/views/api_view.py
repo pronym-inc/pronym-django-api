@@ -164,7 +164,11 @@ class ApiView(View):
                 # This is the happy path - we've made it through authorization
                 # and validation, now generate the success response.
                 # Process the data
-                self.processing_artifact = self.process(validator)
+                # We can also throw an error here.
+                try:
+                    self.processing_artifact = self.process(validator)
+                except ApiValidationError as e:
+                    response = self.create_validation_error_response(e)
                 # Serialize the data
                 response_data = self.serialize(
                     validator, self.processing_artifact)
