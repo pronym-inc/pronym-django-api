@@ -293,6 +293,6 @@ class ApiView(View):
         request_data = self.get_raw_request_data()
         validator_kwargs = self.get_validator_kwargs()
         validator = self.get_validator(request_data, **validator_kwargs)
-        if not validator.is_valid():
+        if not validator.validate():
             raise ApiValidationError(validator.errors)
         return validator

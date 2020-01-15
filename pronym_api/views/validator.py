@@ -2,7 +2,8 @@ from django.forms import Form, ModelForm
 
 
 class ValidatorMixin:
-    pass
+    def validate(self):
+        return self.is_valid()
 
 
 class NullValidator(ValidatorMixin):
