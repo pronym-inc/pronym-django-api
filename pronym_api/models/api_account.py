@@ -5,7 +5,7 @@ from .api_account_member import ApiAccountMember
 
 
 class ApiAccount(models.Model):
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
