@@ -169,11 +169,11 @@ class ApiView(View):
                     self.processing_artifact = self.process(validator)
                 except ApiValidationError as e:
                     response = self.create_validation_error_response(e)
-                # Serialize the data
-                response_data = self.serialize(
-                    validator, self.processing_artifact)
-                # Send response back
-                response = self.generate_response(response_data)
+                else:
+                    # Serialize the data
+                    response_data = self.serialize(
+                        validator, self.processing_artifact)
+                    response = self.generate_response(response_data)
         self.create_log_entry(response)
         return response
 
