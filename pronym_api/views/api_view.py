@@ -1,5 +1,6 @@
 from json import JSONDecodeError, dumps, loads
 
+from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -142,38 +143,44 @@ class ApiView(View):
         return JsonResponse(response_data, status=status)
 
     def dispatch(self, request, *args, **kwargs):
-        # Check if this method is allowed on this endpoint.
-        if not self.check_method_allowed():
-            response = HttpResponse(status=405)
-        # Check if the user is allowed to be here.
-        elif not self.check_authentication():
-            response = HttpResponse(status=401)
-        elif not self.check_authorization():
-            response = HttpResponse(status=403)
-        else:
-            # Validate the request data
-            try:
-                validator = self.validate_request()
-            except JSONDecodeError:
-                response = JsonResponse({
-                    'errors': ['Could not decode a JSON request.']
-                }, status=400)
-            except ApiValidationError as e:
-                response = self.create_validation_error_response(e)
+        try:
+            # Check if this method is allowed on this endpoint.
+            if not self.check_method_allowed():
+                response = HttpResponse(status=405)
+            # Check if the user is allowed to be here.
+            elif not self.check_authentication():
+                response = HttpResponse(status=401)
+            elif not self.check_authorization():
+                response = HttpResponse(status=403)
             else:
-                # This is the happy path - we've made it through authorization
-                # and validation, now generate the success response.
-                # Process the data
-                # We can also throw an error here.
+                # Validate the request data
                 try:
-                    self.processing_artifact = self.process(validator)
+                    validator = self.validate_request()
+                except JSONDecodeError:
+                    response = JsonResponse({
+                        'errors': ['Could not decode a JSON request.']
+                    }, status=400)
                 except ApiValidationError as e:
                     response = self.create_validation_error_response(e)
                 else:
-                    # Serialize the data
-                    response_data = self.serialize(
-                        validator, self.processing_artifact)
-                    response = self.generate_response(response_data)
+                    # This is the happy path - we've made it through
+                    # authorization and validation, now generate the success
+                    # response.
+                    # Process the data
+                    # We can also throw an error here.
+                    try:
+                        self.processing_artifact = self.process(validator)
+                    except ApiValidationError as e:
+                        response = self.create_validation_error_response(e)
+                    else:
+                        # Serialize the data
+                        response_data = self.serialize(
+                            validator, self.processing_artifact)
+                        response = self.generate_response(response_data)
+        except Exception as e:
+            response = HttpResponse(status=500)
+            if settings.DEBUG:
+                raise e
         self.create_log_entry(response)
         return response
 
