@@ -179,8 +179,6 @@ class ApiView(View):
                         response = self.generate_response(response_data)
         except Exception as e:
             response = HttpResponse(status=500)
-            if settings.DEBUG:
-                raise e
         self.create_log_entry(response)
         return response
 
