@@ -294,7 +294,16 @@ class ApiView(View):
         return self.require_authentication
 
     def validate_request(self):
-        request_data = self.get_raw_request_data()
+        try:
+            request_data = self.get_raw_request_data()
+        except JSONDecodeError as e:
+            raise ApiValidationError(
+                {
+                    'json': [
+                        'Could not decode a valid JSON response: {0}'.format(e)
+                    ]
+                }
+            )
         validator_kwargs = self.get_validator_kwargs()
         validator = self.get_validator(request_data, **validator_kwargs)
         if not validator.validate():
