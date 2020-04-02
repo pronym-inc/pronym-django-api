@@ -3,7 +3,7 @@ from django.test import RequestFactory, TestCase
 from .factories import ApiAccountMemberFactory
 
 
-class PronymApiTestCase(TestCase):
+class PronymApiTestCase(TestCase):  # pragma: no cover
     base_url = '/'
     view_class = None
     valid_data = {}
@@ -34,6 +34,9 @@ class PronymApiTestCase(TestCase):
 
     def get_view_kwargs(self):
         return {}
+
+    def patch(self, **kwargs):
+        return self.send_request('patch', **kwargs)
 
     def post(self, **kwargs):
         return self.send_request('post', **kwargs)

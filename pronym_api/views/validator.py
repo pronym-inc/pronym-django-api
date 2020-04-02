@@ -15,7 +15,7 @@ class NullValidator(ValidatorMixin):
 
 
 class Validator(NullValidator):
-    def __init__(self, data, *args, **kwargs):
+    def __init__(self, data, *args, **kwargs):  # pragma: no cover
         self.data = data
 
 
@@ -24,4 +24,11 @@ class FormValidator(ValidatorMixin, Form):
 
 
 class ModelFormValidator(ValidatorMixin, ModelForm):
-    pass
+    @classmethod
+    def for_model(cls, model_):
+        class MyModelFormValidator(cls):
+            class Meta:
+                model = model_
+                exclude = []
+
+        return MyModelFormValidator

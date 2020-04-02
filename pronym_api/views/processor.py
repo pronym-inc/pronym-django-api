@@ -3,7 +3,7 @@ class Processor:
         self.view = view
         self.validator = validator
 
-    def process(self):
+    def process(self):  # pragma: no cover
         pass
 
 

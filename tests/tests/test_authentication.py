@@ -38,7 +38,7 @@ class AuthenticationApiTest(PronymApiTestCase):
             minutes=settings.TOKEN_EXPIRATION_MINUTES + 1)
 
         response = self.post()
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 401, response.content)
 
     def test_jwt_token(self):
         # This gets a little into the weeds, but if we mess with
@@ -50,10 +50,10 @@ class AuthenticationApiTest(PronymApiTestCase):
             new_token = self.make_new_token(
                 **{field: different_dt.timestamp()})
             response = self.post(auth_token=new_token)
-            self.assertEqual(response.status_code, 401)
+            self.assertEqual(response.status_code, 401, response.content)
 
         # Check sub and iss
         for field in ('sub', 'iss', 'jti'):
             new_token = self.make_new_token(**{field: '6'})
             response = self.post(auth_token=new_token)
-            self.assertEqual(response.status_code, 401)
+            self.assertEqual(response.status_code, 401, response.content)

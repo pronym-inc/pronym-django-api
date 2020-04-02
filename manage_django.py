@@ -51,6 +51,7 @@ SETTINGS_DICT = {
     "JWT_SUB": "pronym",
     "JWT_ISS": "pronymapi",
     "JWT_AUD": "pronym",
+    "DEBUG": True,
     "TEMPLATES": [
         {
             "BACKEND": "django.template.backends.django.DjangoTemplates",

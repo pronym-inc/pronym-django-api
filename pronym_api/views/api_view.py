@@ -110,7 +110,10 @@ class ApiView(View):
         return True
 
     def check_method_allowed(self):
-        return self.request.method in self.methods.keys()
+        return bool(self.get_method_config())
+
+    def check_resource_exists(self):
+        return True
 
     def create_log_entry(self, response):
         header_string = self.get_redacted_header_str()
@@ -152,14 +155,12 @@ class ApiView(View):
                 response = HttpResponse(status=401)
             elif not self.check_authorization():
                 response = HttpResponse(status=403)
+            elif not self.check_resource_exists():
+                response = HttpResponse(status=404)
             else:
                 # Validate the request data
                 try:
                     validator = self.validate_request()
-                except JSONDecodeError:
-                    response = JsonResponse({
-                        'errors': ['Could not decode a JSON request.']
-                    }, status=400)
                 except ApiValidationError as e:
                     response = self.create_validation_error_response(e)
                 else:
@@ -178,7 +179,11 @@ class ApiView(View):
                             validator, self.processing_artifact)
                         response = self.generate_response(response_data)
         except Exception as e:
-            response = HttpResponse(status=500)
+            if settings.DEBUG:  # pragma: no cover
+                content = str(e)
+            else:
+                content = 'Server Error'
+            response = HttpResponse(content, status=500)
         self.create_log_entry(response)
         return response
 
@@ -190,14 +195,18 @@ class ApiView(View):
     def get_endpoint_name(self):
         return self.endpoint_name
 
+    def get_methods(self):
+        return self.methods
+
+    def get_method_config(self):
+        return self.get_methods().get(self.request.method, {})
+
     def get_processor(self, validator, authenticated_account_member):
         process_cls = self.get_processor_class()
         return process_cls(self, validator)
 
     def get_processor_class(self):
-        return self.methods\
-            .get(self.request.method, {})\
-            .get('processor', NullProcessor)
+        return self.get_method_config().get('processor', NullProcessor)
 
     def get_raw_request_data(self):
         if not hasattr(self, '_raw_request_data'):
@@ -213,8 +222,10 @@ class ApiView(View):
                         else value_list)
                     for key, value_list in self.request.GET.items()
                 }
+            elif self.request.method == 'DELETE':
+                self._raw_request_data = {}
             else:
-                if len(self.request.body) == 0:
+                if len(self.request.body) == 0:  # pragma: no cover
                     self._raw_request_data = {}
                 else:
                     self._raw_request_data = loads(self.request.body)
@@ -266,9 +277,7 @@ class ApiView(View):
         return serializer_cls(self, validator, processing_artifact)
 
     def get_serializer_class(self):
-        return self.methods\
-            .get(self.request.method, {})\
-            .get('serializer', NullSerializer)
+        return self.get_method_config().get('serializer', NullSerializer)
 
     def get_status_code(self):
         return 200
@@ -278,9 +287,7 @@ class ApiView(View):
         return validator_cls(data, **validator_kwargs)
 
     def get_validator_class(self):
-        return self.methods\
-            .get(self.request.method, {})\
-            .get('validator', NullValidator)
+        return self.get_method_config().get('validator', NullValidator)
 
     def get_validator_kwargs(self):
         return {}
@@ -305,7 +312,7 @@ class ApiView(View):
             raise ApiValidationError(
                 {
                     'json': [
-                        'Could not decode a valid JSON response: {0}'.format(e)
+                        'Could not decode a valid JSON request: {0}'.format(e)
                     ]
                 }
             )

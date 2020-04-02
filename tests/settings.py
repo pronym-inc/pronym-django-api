@@ -1,3 +1,4 @@
+DEBUG = True
 INSTALLED_APPS = (
     # Default Django apps
     "django.contrib.auth",

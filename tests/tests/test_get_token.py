@@ -35,7 +35,7 @@ class GetTokenTest(PronymApiTestCase):
 
     def test_login(self):
         response = self.post()
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, response.content)
         response_data = loads(response.content)
         self.assertIn("token", response_data)
         self.assertIn("expires", response_data)
@@ -45,4 +45,4 @@ class GetTokenTest(PronymApiTestCase):
             view=AuthenticatedSampleApiView.as_view(),
             auth_token=response_data['token'],
             use_authentication=True)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, response.content)
