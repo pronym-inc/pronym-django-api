@@ -193,8 +193,6 @@ class ModelFormValidator(ValidatorMixin, ModelForm):
     def save(self, commit=True):
         obj = ModelForm.save(self, commit=False)
 
-        print(self.errors)
-
         self._save_m2o_fields(obj)
         self._save_o2o_fields(obj)
 
