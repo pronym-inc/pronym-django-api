@@ -1,7 +1,8 @@
 from .api_view import ApiView
 from .processor import Processor, SaveValidatorProcessor
 from .serializer import ListSerializer, ModelSerializer, NullSerializer
-from .validator import ModelFormValidator, NullValidator
+from .validator import (
+    make_patch_validator, ModelFormValidator, NullValidator)
 
 
 class RetrieveRecordProcessor(Processor):
@@ -21,16 +22,16 @@ class DeleteRecordByPkProcessor(Processor):
 
 class PatchProcessor(Processor):
     def process(self):
-        item = self.view.get_item()
-        for field_name, value in self.validator.cleaned_data.items():
-            if field_name in self.validator.data:
-                setattr(item, field_name, value)
-        item.save()
-        return item
+        return self.validator.patch(self.view.get_item())
 
 
 class ModelApiView(ApiView):
     item_id_kwarg_name = 'id'
+
+    many_to_many_fields = []
+    one_to_many_fields = []
+    many_to_one_fields = []
+    one_to_one_fields = []
 
     def check_resource_exists(self):
         if self.is_item_request():
@@ -101,11 +102,24 @@ class ModelApiView(ApiView):
     def get_model(self):
         return self.model
 
-    def get_model_form_validator_class(self):
-        return ModelFormValidator.for_model(self.get_model())
+    def get_model_form_validator_class(self, patch_mode=False):
+        return ModelFormValidator.for_model(
+            self.get_model(),
+            m2m_fields=self._get_many_to_many_fields(),
+            o2m_fields=self._get_one_to_many_fields(),
+            m2o_fields=self._get_many_to_one_fields(),
+            o2o_fields=self._get_one_to_one_fields(),
+            patch_mode=patch_mode
+        )
 
     def get_model_serializer_class(self):
-        return ModelSerializer
+        return ModelSerializer.for_model(
+            self.get_model(),
+            m2m_fields=self._get_many_to_many_fields(),
+            o2m_fields=self._get_one_to_many_fields(),
+            m2o_fields=self._get_many_to_one_fields(),
+            o2o_fields=self._get_one_to_one_fields()
+        )
 
     def get_validator_kwargs(self):
         # In the case of a PUT request, we want to pass along the object as
@@ -151,16 +165,9 @@ class ModelApiView(ApiView):
         return self.get_model_serializer_class()
 
     def get_modify_validator_class(self):
-        validator_cls = self.get_model_form_validator_class()
-
-        class PatchValidator(validator_cls):
-            def __init__(self, *args, **kwargs):
-                validator_cls.__init__(self, *args, **kwargs)
-                # Make all fields optional.
-                for field in self.fields.values():
-                    field.required = False
-
-        return PatchValidator
+        validator_cls = self.get_model_form_validator_class(
+            patch_mode=True)
+        return make_patch_validator(validator_cls)
 
     def get_modify_processor_class(self):
         return PatchProcessor
@@ -182,3 +189,87 @@ class ModelApiView(ApiView):
 
     def is_item_request(self):
         return 'id' in self.kwargs
+
+    def _get_many_to_many_fields(self):
+        fields = []
+        for m2m_field in self.many_to_many_fields:
+            if isinstance(m2m_field, str):
+                item = {'name': m2m_field}
+            elif isinstance(m2m_field, dict):
+                item = m2m_field
+            else:
+                raise ValueError(
+                    "Fields should only be specified as strings, "
+                    "indicating field names, or dictionaries.")
+            name = item['name']
+            m2m_model = getattr(self.model, name).rel.field.related_model
+            output = {
+                'validator': ModelFormValidator.for_model(m2m_model),
+                'serializer': ModelSerializer.for_model(m2m_model)
+            }
+            output.update(item)
+            fields.append(output)
+        return fields
+
+    def _get_many_to_one_fields(self):
+        fields = []
+        for m2o_field in self.many_to_one_fields:
+            if isinstance(m2o_field, str):
+                item = {'name': m2o_field}
+            elif isinstance(m2o_field, dict):
+                item = m2o_field
+            else:
+                raise ValueError(
+                    "Fields should only be specified as strings, "
+                    "indicating field names, or dictionaries.")
+            name = item['name']
+            m2o_model = getattr(self.model, name).field.related_model
+            output = {
+                'validator': ModelFormValidator.for_model(m2o_model),
+                'serializer': ModelSerializer.for_model(m2o_model)
+            }
+            output.update(item)
+            fields.append(output)
+        return fields
+
+    def _get_one_to_many_fields(self):
+        fields = []
+        for o2m_field in self.one_to_many_fields:
+            if isinstance(o2m_field, str):
+                item = {'name': o2m_field}
+            elif isinstance(o2m_field, dict):
+                item = o2m_field
+            else:
+                raise ValueError(
+                    "Fields should only be specified as strings, "
+                    "indicating field names, or dictionaries.")
+            name = item['name']
+            o2m_model = getattr(self.model, name).field.model
+            output = {
+                'validator': ModelFormValidator.for_model(o2m_model),
+                'serializer': ModelSerializer.for_model(o2m_model)
+            }
+            output.update(item)
+            fields.append(output)
+        return fields
+
+    def _get_one_to_one_fields(self):
+        fields = []
+        for o2o_field in self.one_to_one_fields:
+            if isinstance(o2o_field, str):
+                item = {'name': o2o_field}
+            elif isinstance(o2o_field, dict):
+                item = o2o_field
+            else:
+                raise ValueError(
+                    "Fields should only be specified as strings, "
+                    "indicating field names, or dictionaries.")
+            name = item['name']
+            o2o_model = getattr(self.model, name).field.related_model
+            output = {
+                'validator': ModelFormValidator.for_model(o2o_model),
+                'serializer': ModelSerializer.for_model(o2o_model)
+            }
+            output.update(item)
+            fields.append(output)
+        return fields

@@ -8,14 +8,10 @@ from django.views import View
 
 from pronym_api.models import LogEntry, TokenWhitelistEntry
 
+from .exceptions import ApiValidationError
 from .processor import NullProcessor
 from .serializer import NullSerializer
 from .validator import NullValidator
-
-
-class ApiValidationError(Exception):
-    def __init__(self, errors):
-        self.errors = errors
 
 
 @method_decorator(csrf_exempt, name='dispatch')
