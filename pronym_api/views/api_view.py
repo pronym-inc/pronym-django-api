@@ -280,7 +280,7 @@ class ApiView(View):
 
     def get_validator(self, data, **validator_kwargs):
         validator_cls = self.get_validator_class()
-        return validator_cls(data, **validator_kwargs)
+        return validator_cls(self, data, **validator_kwargs)
 
     def get_validator_class(self):
         return self.get_method_config().get('validator', NullValidator)

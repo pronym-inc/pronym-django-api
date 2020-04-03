@@ -9,7 +9,8 @@ class ValidatorMixin:
 
 
 class NullValidator(ValidatorMixin):
-    def __init__(self, data, *args, **kwargs):
+    def __init__(self, view, data, *args, **kwargs):
+        self.view = view
         self.cleaned_data = data
 
     def is_valid(self):
@@ -17,12 +18,15 @@ class NullValidator(ValidatorMixin):
 
 
 class Validator(NullValidator):
-    def __init__(self, data, *args, **kwargs):  # pragma: no cover
+    def __init__(self, view, data, *args, **kwargs):  # pragma: no cover
+        self.view = view
         self.data = data
 
 
 class FormValidator(ValidatorMixin, Form):
-    pass
+    def __init__(self, view, data, *args, **kwargs):
+        self.view = view
+        Form.__init__(self, data, *args, **kwargs)
 
 
 class PassedPkValidator(Validator):
@@ -41,7 +45,8 @@ class PassedPkValidator(Validator):
 
         return MyPassedPkValidator
 
-    def __init__(self, pk):
+    def __init__(self, view, pk):
+        self.view = view
         self.pk = pk
 
     def is_valid(self):
@@ -99,7 +104,8 @@ class ModelFormValidator(ValidatorMixin, ModelForm):
 
         return MyModelFormValidator
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, view, *args, **kwargs):
+        self.view = view
         ModelForm.__init__(self, *args, **kwargs)
         self._m2m_validators = {}
         self._o2m_validators = {}
@@ -120,9 +126,9 @@ class ModelFormValidator(ValidatorMixin, ModelForm):
                 continue
             for idx, item in enumerate(self.data.get(name, [])):
                 if isinstance(item, int) or isinstance(item, str):
-                    validator = pk_validator_class(item)
+                    validator = pk_validator_class(self.view, item)
                 else:
-                    validator = validator_class(item)
+                    validator = validator_class(self.view, item)
                 if not validator.is_valid():
                     field_errors.append(
                         {"index": idx, "errors": validator.errors}
@@ -140,7 +146,7 @@ class ModelFormValidator(ValidatorMixin, ModelForm):
             if self._patch_mode and name not in self.data:
                 continue
             for idx, item in enumerate(self.data.get(name, [])):
-                validator = validator_class(item)
+                validator = validator_class(self.view, item)
                 if not validator.is_valid():
                     field_errors.append({
                         "index": idx,
@@ -161,9 +167,9 @@ class ModelFormValidator(ValidatorMixin, ModelForm):
                 continue
             item = self.data.get(name, {})
             if isinstance(item, int) or isinstance(item, str):
-                validator = pk_validator_class(item)
+                validator = pk_validator_class(self.view, item)
             else:
-                validator = validator_class(item)
+                validator = validator_class(self.view, item)
             if not validator.is_valid():
                 relationship_errors[name] = validator.errors
             else:
@@ -177,7 +183,7 @@ class ModelFormValidator(ValidatorMixin, ModelForm):
             if self._patch_mode and name not in self.data:
                 continue
             item = self.data.get(name, {})
-            validator = validator_class(item)
+            validator = validator_class(self.view, item)
             if not validator.is_valid():
                 relationship_errors[name] = validator.errors
             else:
