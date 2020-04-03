@@ -51,12 +51,14 @@ class ModelViewRelationshipsTestCase(PronymApiTestCase):
         self.assertEqual(account.categories.count(), 2)
         self.assertEqual(account.categories.filter(name='Fun').count(), 1)
         self.assertEqual(account.categories.filter(name='News').count(), 1)
+        self.assertEqual(len(data['categories']), 2)
 
         self.assertEqual(account.log_entries.count(), 3)
         self.assertEqual(account.log_entries.filter(name='Login').count(), 1)
         self.assertEqual(account.log_entries.filter(name='Logout').count(), 1)
         self.assertEqual(
             account.log_entries.filter(name='Register').count(), 1)
+        self.assertEqual(len(data['log_entries']), 3)
 
     def test_create_with_using_ids(self):
         organization = OrganizationFactory()

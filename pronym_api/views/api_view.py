@@ -176,7 +176,7 @@ class ApiView(View):
                         response = self.generate_response(response_data)
         except Exception as e:
             if settings.DEBUG:  # pragma: no cover
-                content = str(e)
+                raise e
             else:
                 content = 'Server Error'
             response = HttpResponse(content, status=500)

@@ -30,6 +30,8 @@ class ModelViewModifyTestCase(PronymApiTestCase):
 
         record = Organization.objects.get(pk=data['id'])
 
+        self.assertEqual(self.organization.id, data['id'])
+
         self.assertEqual(record.name, 'Pronym')
         self.assertFalse(record.is_active)
 

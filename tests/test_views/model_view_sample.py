@@ -16,10 +16,7 @@ class UserAccountModelApiView(ModelApiView):
 
     many_to_many_fields = ['categories']
     one_to_many_fields = [
-        {
-            'name': 'log_entries',
-            'minimum': 1
-        }
+        {'name': 'log_entries'}
     ]
     many_to_one_fields = ['organization']
     one_to_one_fields = ['profile']

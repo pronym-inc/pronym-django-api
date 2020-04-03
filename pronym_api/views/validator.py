@@ -26,6 +26,14 @@ class FormValidator(ValidatorMixin, Form):
 
 
 class PassedPkValidator(Validator):
+    """
+    ModelFormValidators use child validators to handle relationships
+    with other database objects.  These can be specified either as
+    JSON objects, in which case they go through their own
+    ModelFormValidator, or they can be specified as an integer, representing
+    a primary key.  This validator is used to track the latter, and contains
+    the logic for validating the object exists.
+    """
     @classmethod
     def for_model(cls, model_):
         class MyPassedPkValidator(cls):
@@ -110,13 +118,15 @@ class ModelFormValidator(ValidatorMixin, ModelForm):
             name = m2m_field['name']
             if self._patch_mode and name not in self.data:
                 continue
-            for item in self.data.get(name, []):
+            for idx, item in enumerate(self.data.get(name, [])):
                 if isinstance(item, int) or isinstance(item, str):
                     validator = pk_validator_class(item)
                 else:
                     validator = validator_class(item)
                 if not validator.is_valid():
-                    field_errors.append(validator.errors)
+                    field_errors.append(
+                        {"index": idx, "errors": validator.errors}
+                    )
                 else:
                     self._m2m_validators.setdefault(name, [])
                     self._m2m_validators[name].append(validator)
@@ -129,10 +139,13 @@ class ModelFormValidator(ValidatorMixin, ModelForm):
             name = o2m_field['name']
             if self._patch_mode and name not in self.data:
                 continue
-            for item in self.data.get(name, []):
+            for idx, item in enumerate(self.data.get(name, [])):
                 validator = validator_class(item)
                 if not validator.is_valid():
-                    field_errors.append(validator.errors)
+                    field_errors.append({
+                        "index": idx,
+                        "errors": validator.errors
+                    })
                 else:
                     self._o2m_validators.setdefault(name, [])
                     self._o2m_validators[name].append(validator)

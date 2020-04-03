@@ -105,20 +105,20 @@ class ModelApiView(ApiView):
     def get_model_form_validator_class(self, patch_mode=False):
         return ModelFormValidator.for_model(
             self.get_model(),
-            m2m_fields=self._get_many_to_many_fields(),
-            o2m_fields=self._get_one_to_many_fields(),
-            m2o_fields=self._get_many_to_one_fields(),
-            o2o_fields=self._get_one_to_one_fields(),
+            m2m_fields=self._get_relationship_fields(self.many_to_many_fields),
+            o2m_fields=self._get_relationship_fields(self.one_to_many_fields),
+            m2o_fields=self._get_relationship_fields(self.many_to_one_fields),
+            o2o_fields=self._get_relationship_fields(self.one_to_one_fields),
             patch_mode=patch_mode
         )
 
     def get_model_serializer_class(self):
         return ModelSerializer.for_model(
             self.get_model(),
-            m2m_fields=self._get_many_to_many_fields(),
-            o2m_fields=self._get_one_to_many_fields(),
-            m2o_fields=self._get_many_to_one_fields(),
-            o2o_fields=self._get_one_to_one_fields()
+            m2m_fields=self._get_relationship_fields(self.many_to_many_fields),
+            o2m_fields=self._get_relationship_fields(self.one_to_many_fields),
+            m2o_fields=self._get_relationship_fields(self.many_to_one_fields),
+            o2o_fields=self._get_relationship_fields(self.one_to_one_fields)
         )
 
     def get_validator_kwargs(self):
@@ -190,85 +190,27 @@ class ModelApiView(ApiView):
     def is_item_request(self):
         return 'id' in self.kwargs
 
-    def _get_many_to_many_fields(self):
+    def _get_relationship_fields(self, in_fields):
         fields = []
-        for m2m_field in self.many_to_many_fields:
-            if isinstance(m2m_field, str):
-                item = {'name': m2m_field}
-            elif isinstance(m2m_field, dict):
-                item = m2m_field
-            else:
+        for in_field in in_fields:
+            if isinstance(in_field, str):
+                item = {'name': in_field}
+            elif isinstance(in_field, dict):
+                item = in_field
+            else:  # pragma: no cover
                 raise ValueError(
                     "Fields should only be specified as strings, "
                     "indicating field names, or dictionaries.")
             name = item['name']
-            m2m_model = getattr(self.model, name).rel.field.related_model
+            rel_model = getattr(self.model, name).field.related_model
+            # In one to many relationships, we're actually looking for the
+            # `model` attribute - we'll know if our `related_model` is
+            # `self.model`.
+            if rel_model == self.model:
+                rel_model = getattr(self.model, name).field.model
             output = {
-                'validator': ModelFormValidator.for_model(m2m_model),
-                'serializer': ModelSerializer.for_model(m2m_model)
-            }
-            output.update(item)
-            fields.append(output)
-        return fields
-
-    def _get_many_to_one_fields(self):
-        fields = []
-        for m2o_field in self.many_to_one_fields:
-            if isinstance(m2o_field, str):
-                item = {'name': m2o_field}
-            elif isinstance(m2o_field, dict):
-                item = m2o_field
-            else:
-                raise ValueError(
-                    "Fields should only be specified as strings, "
-                    "indicating field names, or dictionaries.")
-            name = item['name']
-            m2o_model = getattr(self.model, name).field.related_model
-            output = {
-                'validator': ModelFormValidator.for_model(m2o_model),
-                'serializer': ModelSerializer.for_model(m2o_model)
-            }
-            output.update(item)
-            fields.append(output)
-        return fields
-
-    def _get_one_to_many_fields(self):
-        fields = []
-        for o2m_field in self.one_to_many_fields:
-            if isinstance(o2m_field, str):
-                item = {'name': o2m_field}
-            elif isinstance(o2m_field, dict):
-                item = o2m_field
-            else:
-                raise ValueError(
-                    "Fields should only be specified as strings, "
-                    "indicating field names, or dictionaries.")
-            name = item['name']
-            o2m_model = getattr(self.model, name).field.model
-            output = {
-                'validator': ModelFormValidator.for_model(o2m_model),
-                'serializer': ModelSerializer.for_model(o2m_model)
-            }
-            output.update(item)
-            fields.append(output)
-        return fields
-
-    def _get_one_to_one_fields(self):
-        fields = []
-        for o2o_field in self.one_to_one_fields:
-            if isinstance(o2o_field, str):
-                item = {'name': o2o_field}
-            elif isinstance(o2o_field, dict):
-                item = o2o_field
-            else:
-                raise ValueError(
-                    "Fields should only be specified as strings, "
-                    "indicating field names, or dictionaries.")
-            name = item['name']
-            o2o_model = getattr(self.model, name).field.related_model
-            output = {
-                'validator': ModelFormValidator.for_model(o2o_model),
-                'serializer': ModelSerializer.for_model(o2o_model)
+                'validator': ModelFormValidator.for_model(rel_model),
+                'serializer': ModelSerializer.for_model(rel_model)
             }
             output.update(item)
             fields.append(output)
