@@ -266,7 +266,7 @@ class ApiView(View):
 
     def get_validator(self, data, **validator_kwargs):
         validator_cls = self.get_validator_class()
-        # We set validator_kwargs dict as under the **kwargs['context']
+        # We place validator_kwargs dict under the **kwargs['context']
         return validator_cls(data, context=validator_kwargs)
 
     def get_validator_class(self):
