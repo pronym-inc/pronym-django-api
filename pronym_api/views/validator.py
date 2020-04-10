@@ -2,7 +2,9 @@ from django.forms import Form, ModelForm
 
 
 class ValidatorMixin:
-    pass
+    def __init__(self, *args, **kwargs):
+        self._context = kwargs.pop('context', {})
+        super().__init__(*args, **kwargs)
 
 
 class NullValidator(ValidatorMixin):
