@@ -1,5 +1,7 @@
 from json import loads
 
+from django.test import override_settings
+
 from pronym_api.views.api_view import ApiValidationError
 from pronym_api.views.processor import Processor
 
@@ -90,6 +92,7 @@ class BrokenProcessor(Processor):
         raise Exception
 
 
+@override_settings(RAISE_ON_500=False)
 class BrokenStatusCodeApiTest(PronymApiTestCase):
 
     class BrokenSampleApiView(AuthenticatedSampleApiView):

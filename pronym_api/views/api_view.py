@@ -175,7 +175,7 @@ class ApiView(View):
                             validator, self.processing_artifact)
                         response = self.generate_response(response_data)
         except Exception as e:
-            if settings.DEBUG:  # pragma: no cover
+            if settings.RAISE_ON_500:  # pragma: no cover
                 raise e
             else:
                 content = 'Server Error'

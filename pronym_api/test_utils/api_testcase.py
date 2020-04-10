@@ -1,8 +1,9 @@
-from django.test import RequestFactory, TestCase
+from django.test import override_settings, RequestFactory, TestCase
 
 from .factories import ApiAccountMemberFactory
 
 
+@override_settings(RAISE_ON_500=True)
 class PronymApiTestCase(TestCase):  # pragma: no cover
     base_url = '/'
     view_class = None
