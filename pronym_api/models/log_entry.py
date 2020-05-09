@@ -21,6 +21,12 @@ class LogEntry(models.Model):
     response_payload = models.TextField()
     status_code = models.PositiveIntegerField()
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['datetime_added']),
+            models.Index(fields=['authenticated_profile'])
+        ]
+
     def __str__(self):  # pragma: no cover
         return "[{0}] {1} {2} -> {3}".format(
             self.datetime_added,

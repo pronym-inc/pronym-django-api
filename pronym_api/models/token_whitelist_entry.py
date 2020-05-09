@@ -59,6 +59,11 @@ class TokenWhitelistEntry(models.Model):
 
     objects = TokenWhitelistEntryManager()
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["token_entropy"])
+        ]
+
     @staticmethod
     def get_expiration_cutoff():
         expiration_window = timedelta(
@@ -105,7 +110,7 @@ def pre_save_token(sender, instance, **kwargs):
     if instance.token_entropy is None:
         # Generate a unique int.
         while True:
-            candidate = random.randint(1, 100000000)
+            candidate = random.randint(1, 10000000000)
             try:
                 sender.objects.get(token_entropy=candidate)
             except sender.DoesNotExist:
