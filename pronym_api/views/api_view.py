@@ -1,21 +1,44 @@
+"""
+ApiView inherits from generic Django view and should serve as the base class for all Pronym API development.
+An ApiView will send a request to an `ApiRoute`, based on request method, for processing.
+"""
+from abc import ABC, abstractmethod
+from enum import Enum
 from json import JSONDecodeError, dumps, loads
+from typing import Dict, List, Any, Optional, Generic, TypeVar, ClassVar, Union
 
 from django.conf import settings
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, HttpRequest
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
 
-from pronym_api.models import LogEntry, TokenWhitelistEntry
+from pronym_api.models import LogEntry, TokenWhitelistEntry, ApiAccountMember
+from pronym_api.views.actions import BaseAction, ApiProcessingFailure, NullResource, ResourceAction
+from pronym_api.views.deserializer import Deserializer, DeserializationException, JsonDeserializer, \
+    QueryStringDeserializer
 
-from .exceptions import ApiValidationError
-from .processor import NullProcessor
-from .serializer import NullSerializer
-from .validator import NullValidator
+from pronym_api.views.validation import ApiValidationErrorSummary
+
+
+ResourceT = TypeVar("ResourceT")
+ActionT = TypeVar("ActionT", bound=BaseAction)
+
+
+class HttpMethod(Enum):
+    """
+    A collection of known HTTP methods.  Add obscure ones if you find them!
+    """
+    GET = 'GET'
+    POST = 'POST'
+    DELETE = 'DELETE'
+    PUT = 'PUT'
+    PATCH = 'PATCH'
+    UNKNOWN = 'UNKNOWN'
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class ApiView(View):
+class ApiView(Generic[ResourceT, ActionT], View, ABC):
     """A basic view for supply an JSON-based API.  The three primary concepts for
     the ApiView are validators, processors, and serializers.
 
@@ -45,51 +68,86 @@ class ApiView(View):
     7) The serialized data is then encoded to JSON and sent back in the
     successful response."""
 
-    # This is a dictionary mapping request methods (all caps) with
-    # the validators, processors, and serializers associated with them.
-    # The contents of this dictionary will both determine which methods
-    # are allowed on the object (absent methods will be prohibited)
-    # and how those requests will be processed.
-    # For example, to enable an endpoint that allows GET, POST requests
-    # you might specify it like:
-    #
-    # methods = {
-    #     'GET': {
-    #         'validator': MyGetValidator,
-    #         'processor': MyGetProcessor,
-    #         'serializer': MyObjectSerializer
-    #     },
-    #     'POST': {
-    #         'validator': MyPostValidator,
-    #         'processor': MyPostProcessor,
-    #         'serializer': MyObjectSerializer
-    #     }
-    # }
-    #
-    # PUT or DELETE requests to this endpoint will receive a 405 error.
-    methods = {}
     # This string will replace fields marked as redacted in logging.
-    REDACTED_STRING = "******"
+    REDACTED_STRING: ClassVar[str] = "******"
     # Should this endpoint check authentication?
-    require_authentication = True
+    require_authentication: ClassVar[bool] = True
     # Which headers should not be logged?  By default, don't log the
     # auth header.
-    redacted_headers = ['http_authorization']
+    redacted_headers: ClassVar[List[str]] = ['http_authorization']
     # Which fields should we scrub from the request data for logging?
-    redacted_request_payload_fields = []
+    redacted_request_payload_fields: ClassVar[List[str]] = []
     # Which fields should we scrub from the response data for logging?
-    redacted_response_payload_fields = []
+    redacted_response_payload_fields: ClassVar[List[str]] = []
+    # The ApiAccountMember associated with this request, if authenticated.
+    authenticated_account_member: Optional[ApiAccountMember]
 
-    def __init__(self, *args, **kwargs):
-        View.__init__(self, *args, **kwargs)
-        self.authenticated_account_member = None
+    _action: Optional[ActionT]
+    _http_method: HttpMethod
+    _resource: ResourceT
 
-    def check_authentication(self):
-        """Checks JWT authentication of user from authorization
-        header.  Also populates self.authenticated_account_member
-        if authentication succeeds."""
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.authenticated_account_member = None
-        if not self.should_check_authentication():
+        self._resource = None
+
+    def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        """
+        The dispatch method handles an incoming HTTP request before it has been delegated based on the request method.
+        Here, we will do various checks to validate the request and, if those are successful, we will attempt to process
+        the request and generate a response.
+        :param request: The HttpRequest from the user
+        :param args:
+        :param kwargs:
+        :return: The HttpResponse to send back to the user.
+        """
+        # If we get an unknown HTTP method, we'll 405 later - set it to unknown for now.
+        try:
+            self._http_method = HttpMethod(self.request.method)
+        except ValueError:
+            self._http_method = HttpMethod.UNKNOWN
+        # Determine the action, typically from request method.
+        self._action = self._get_action()
+        # Get the response - if we get any kind of error, wrap it as a 500 error.
+        try:
+            response = self._get_response()
+        except Exception as e:
+            if settings.RAISE_ON_500:  # pragma: no cover
+                raise e
+            else:
+                content = 'Server Error'
+            response = HttpResponse(content, status=500)
+        # Whatever happened, log it.
+        self._create_log_entry(response)
+        return response
+
+    def _check_authorization_to_resource(self, requester: ApiAccountMember, resource: ResourceT) -> bool:
+        """Is the requesting user authorized to access this resource?"""
+        return True
+
+    def _get_action(self) -> Optional[ActionT]:
+        return self._get_action_configuration().get(self._http_method)
+
+    @abstractmethod
+    def _get_action_configuration(self) -> Dict[HttpMethod, ActionT]:
+        """Get the mapping of HttpMethods to actions."""
+
+    @abstractmethod
+    def _get_endpoint_name(self) -> str:
+        """
+        This endpoint's name, used for logging purposes.
+        :return: The name of the endpoint.
+        """
+
+    @abstractmethod
+    def _get_resource(self) -> Optional[ResourceT]:
+        """The resource in question."""
+
+    def _check_authentication(self) -> bool:
+        """Checks JWT authentication of user from authorization header.  Also populates
+        self.authenticated_account_member if authentication succeeds."""
+        self.authenticated_account_member = None
+        if not self._should_check_authentication():
             return True
         auth_header = self.request.META.get('HTTP_AUTHORIZATION')
         if auth_header is None:
@@ -98,28 +156,36 @@ class ApiView(View):
         if len(auth_split) != 2 or auth_split[0].lower() != 'token':
             return False  # pragma: no cover
         token = auth_split[1]
-        self.authenticated_account_member = TokenWhitelistEntry\
-            .objects.get_account_member_for_token(token)
+        self.authenticated_account_member = TokenWhitelistEntry.objects.get_account_member_for_token(token)
         return self.authenticated_account_member is not None
 
-    def check_authorization(self):
-        return True
+    def _check_authorization(
+            self,
+            requester: ApiAccountMember,
+            resource: Optional[ResourceT],
+            action: ActionT
+    ) -> bool:
+        """Determine if user is authorized to do this thing."""
+        return (
+                resource is None or
+                (
+                    self._check_authorization_to_resource(requester, resource) and
+                    action.check_authorization(requester, resource)
+                )
+        )
 
-    def check_method_allowed(self):
-        return bool(self.get_method_config())
-
-    def check_resource_exists(self):
-        return True
-
-    def create_log_entry(self, response):
-        header_string = self.get_redacted_header_str()
-        redacted_request_payload_string = \
-            self.get_redacted_request_payload_str()
-        redacted_response_payload_string = \
-            self.get_redacted_response_payload_str(response)
+    def _create_log_entry(self, response: HttpResponse) -> LogEntry:
+        """
+        Create a log entry for the given HttpResponse.
+        :param response: The HttpResponse that will be sent to the user.
+        :return: The created log entry.
+        """
+        header_string = self._get_redacted_header_str()
+        redacted_request_payload_string = self._get_redacted_request_payload_str()
+        redacted_response_payload_string = self._get_redacted_response_payload_str(response)
 
         return LogEntry.objects.create(
-            endpoint_name=self.get_endpoint_name(),
+            endpoint_name=self._get_endpoint_name(),
             source_ip=self.request.META.get(
                 'HTTP_X_FORWARDED_FOR', 'Unknown'),
             path=self.request.path,
@@ -127,107 +193,125 @@ class ApiView(View):
             port=self.request.get_port(),
             is_authenticated=self.authenticated_account_member is not None,
             authenticated_profile=self.authenticated_account_member,
-            request_method=self.request.method,
+            request_method=self.request.method or 'Unknown',
             request_headers=header_string,
             request_payload=redacted_request_payload_string,
             response_payload=redacted_response_payload_string,
             status_code=response.status_code
         )
 
-    def create_validation_error_response(
-            self, validation_exception, status=400):
-        response_data = {
-            'errors': validation_exception.errors
-        }
+    def _create_validation_error_response(
+            self,
+            request_errors: Optional[List[str]],
+            field_errors: Optional[Dict[str, Union[List[str], Dict[str, Any]]]],
+            status: int = 400
+    ) -> HttpResponse:
+        """
+        Generate the error response for this endpoint.
+        :param request_errors: Errors that apply to the request as a whole (e.g. span multiple fields or bad JSON)
+        :param field_errors: Errors specific to individual fields, keyed by field name.
+        :param status: The HTTP status code that should be returned in the response
+        :return: The generated HttpResponse
+        """
+        response_data: Dict[str, Any] = {}
+        if request_errors is not None:
+            response_data['request_errors'] = request_errors
+        if field_errors is not None:
+            response_data['field_errors'] = field_errors
         return JsonResponse(response_data, status=status)
 
-    def dispatch(self, request, *args, **kwargs):
+    @property
+    def _deserializer(self) -> Deserializer:
+        if self.request.method == 'GET':
+            return QueryStringDeserializer()
+        else:
+            return JsonDeserializer()
+
+    def _deserialize(self) -> Dict[str, Any]:
+        return self._deserializer.deserialize(self.request)
+
+    def _get_response(self) -> HttpResponse:
+        # Check authentication, if we need to.
+        if not self._check_authentication():
+            return HttpResponse(status=401)
+        # Does the requested resource exist?
+        resource = self._get_resource()
+        if resource is None:
+            return HttpResponse(status=404)
+        self._resource = resource
+        # Are you performing an action that exists?
+        if self._action is None:
+            return HttpResponse(status=405)
+        # Are you allowed to perform that action?
+        if self.authenticated_account_member is not None:
+            if not self._check_authorization(self.authenticated_account_member, resource, self._action):
+                return HttpResponse(status=403)
+        # Is your request valid?  First, we check if we can even parse the response...
         try:
-            # Check if this method is allowed on this endpoint.
-            if not self.check_method_allowed():
-                response = HttpResponse(status=405)
-            # Check if the user is allowed to be here.
-            elif not self.check_authentication():
-                response = HttpResponse(status=401)
-            elif not self.check_authorization():
-                response = HttpResponse(status=403)
-            elif not self.check_resource_exists():
-                response = HttpResponse(status=404)
-            else:
-                # Validate the request data
-                try:
-                    validator = self.validate_request()
-                except ApiValidationError as e:
-                    response = self.create_validation_error_response(e)
-                else:
-                    # This is the happy path - we've made it through
-                    # authorization and validation, now generate the success
-                    # response.
-                    # Process the data
-                    # We can also throw an error here.
-                    try:
-                        self.processing_artifact = self.process(validator)
-                    except ApiValidationError as e:
-                        response = self.create_validation_error_response(e)
-                    else:
-                        # Serialize the data
-                        response_data = self.serialize(
-                            validator, self.processing_artifact)
-                        response = self.generate_response(response_data)
-        except Exception as e:
-            if settings.RAISE_ON_500:  # pragma: no cover
-                raise e
-            else:
-                content = 'Server Error'
-            response = HttpResponse(content, status=500)
-        self.create_log_entry(response)
-        return response
+            request_data = self._deserialize()
+        except DeserializationException as e:
+            return self._create_validation_error_response(
+                request_errors=[e.message],
+                field_errors=None,
+                status=400
+            )
+        # Then, if we can parse it, is the response a valid one?
+        validation_result = self._action.validate(request_data, self.authenticated_account_member, self._resource)
+        if isinstance(validation_result, ApiValidationErrorSummary):
+            return self._create_validation_error_response(
+                request_errors=validation_result.request_errors,
+                field_errors=validation_result.field_errors,
+                status=400
+            )
+        # If we're here, the request is valid, so we can try to process it.
+        # It's possible something still goes wrong - it could be their fault or our fault (some errors cannot be
+        # detected before you try to process the request - like charging a credit card).  When you return your
+        # ApiProcessingFailure, you should specify  if it's our fault (500 response) or their fault (400 response).
+        result = self._action.execute(request_data, self.authenticated_account_member, self._resource)
+        if isinstance(result, ApiProcessingFailure):
+            # Our status will determine status code, indicating whether its our fault or their fault.
+            return self._create_validation_error_response(
+                request_errors=result.errors,
+                field_errors=None,
+                status=result.status
+            )
+        # We made it!  Our request processed successfully.  Send back a 200.
+        return self._generate_response(result, 200)
 
-    def generate_response(self, response_data, status_code=None):
-        if status_code is None:
-            status_code = self.get_status_code()
-        return JsonResponse(response_data, status=status_code)
+    def _generate_response(self, response_data: Optional[Dict[str, Any]], status_code: int) -> HttpResponse:
+        """
+        Generate a response back to the user
+        :param response_data: The payload to be sent as JSON
+        :param status_code: The status code to send to the user
+        :return: The generated HttpResponse
+        """
+        if response_data is None:
+            return HttpResponse(status=status_code)
+        else:
+            return JsonResponse(response_data, status=status_code)
 
-    def get_endpoint_name(self):
-        return self.endpoint_name
+    def _get_redacted_request_payload_fields(self) -> List[str]:
+        """
+        A list of request fields to redact in the logs - make use of this to hide passwords or other secrets from the
+        log.
+        :return: A list of field names to redact.
+        """
+        return self.redacted_request_payload_fields
 
-    def get_methods(self):
-        return self.methods
+    def _get_redacted_response_payload_fields(self) -> List[str]:
+        """
+        A list of fields in the response to redact.  Good way to hide API tokens and such.
+        :return: A list of field names to redact.
+        """
+        return self.redacted_response_payload_fields
 
-    def get_method_config(self):
-        return self.get_methods().get(self.request.method, {})
+    def _should_check_authentication(self) -> bool:
+        """
+        :return: Whether or not this endpoint should require authentication and 401 if the user is unauthenticated.
+        """
+        return self.require_authentication
 
-    def get_processor(self, validator, authenticated_account_member):
-        process_cls = self.get_processor_class()
-        return process_cls(self, validator)
-
-    def get_processor_class(self):
-        return self.get_method_config().get('processor', NullProcessor)
-
-    def get_raw_request_data(self):
-        if not hasattr(self, '_raw_request_data'):
-            if self.request.method == 'GET':
-                # We use the GET data, but by default we'll get back entries
-                # as lists, which can be problematic.  So we have to do some
-                # conversion.  We will assume we're always just getting 1 value
-                # per parameter.
-                self._raw_request_data = {
-                    key: (
-                        value_list[0]
-                        if isinstance(value_list, list)
-                        else value_list)
-                    for key, value_list in self.request.GET.items()
-                }
-            elif self.request.method == 'DELETE':
-                self._raw_request_data = {}
-            else:
-                if len(self.request.body) == 0:  # pragma: no cover
-                    self._raw_request_data = {}
-                else:
-                    self._raw_request_data = loads(self.request.body)
-        return self._raw_request_data
-
-    def get_redacted_header_str(self):
+    def _get_redacted_header_str(self) -> str:
         header_components = []
         for name, value in self.request.META.items():
             if name.lower() in self.redacted_headers:
@@ -238,82 +322,36 @@ class ApiView(View):
                 "{0}={1}".format(name, cleaned_value))
         return "\n".join(header_components)
 
-    def get_redacted_request_payload_fields(self):
-        return self.redacted_request_payload_fields
-
-    def get_redacted_request_payload_str(self):
-        if self.request.method == 'GET':
-            return ''
-        try:
-            payload_copy = self.get_raw_request_data().copy()
-        except JSONDecodeError:
-            return ""
-        for redacted_key in self.get_redacted_request_payload_fields():
-            if redacted_key in payload_copy:
-                payload_copy[redacted_key] = self.REDACTED_STRING
-        return dumps(payload_copy)
-
-    def get_redacted_response_payload_fields(self):
-        return self.redacted_response_payload_fields
-
-    def get_redacted_response_payload_str(self, response):
+    def _get_redacted_response_payload_str(self, response: HttpResponse) -> str:
         if len(response.content) == 0:
             return ''
         try:
             payload_copy = loads(response.content)
         except JSONDecodeError:  # pragma: no cover
             return "Could not deserialize body."
-        for redacted_key in self.get_redacted_response_payload_fields():
+        for redacted_key in self._get_redacted_response_payload_fields():
             if redacted_key in payload_copy:
                 payload_copy[redacted_key] = self.REDACTED_STRING
         return dumps(payload_copy)
 
-    def get_serializer(self, validator, processing_artifact):
-        serializer_cls = self.get_serializer_class()
-        return serializer_cls(self, validator, processing_artifact)
-
-    def get_serializer_class(self):
-        return self.get_method_config().get('serializer', NullSerializer)
-
-    def get_status_code(self):
-        return 200
-
-    def get_validator(self, data, **validator_kwargs):
-        validator_cls = self.get_validator_class()
-        return validator_cls(self, data, **validator_kwargs)
-
-    def get_validator_class(self):
-        return self.get_method_config().get('validator', NullValidator)
-
-    def get_validator_kwargs(self):
-        return {}
-
-    def process(self, validator):
-        processor = self.get_processor(
-            validator, self.authenticated_account_member)
-        artifact = processor.process()
-        return artifact
-
-    def serialize(self, validator, processing_artifact):
-        serializer = self.get_serializer(validator, processing_artifact)
-        return serializer.serialize()
-
-    def should_check_authentication(self):
-        return self.require_authentication
-
-    def validate_request(self):
+    def _get_redacted_request_payload_str(self) -> str:
+        if self.request.method == 'GET':
+            return ""
         try:
-            request_data = self.get_raw_request_data()
-        except JSONDecodeError as e:
-            raise ApiValidationError(
-                {
-                    'json': [
-                        'Could not decode a valid JSON request: {0}'.format(e)
-                    ]
-                }
-            )
-        validator_kwargs = self.get_validator_kwargs()
-        validator = self.get_validator(request_data, **validator_kwargs)
-        if not validator.validate():
-            raise ApiValidationError(validator.errors)
-        return validator
+            payload_copy = loads(self.request.body)
+        except JSONDecodeError:
+            return ""
+        for redacted_key in self._get_redacted_request_payload_fields():
+            if redacted_key in payload_copy:
+                payload_copy[redacted_key] = self.REDACTED_STRING
+        return dumps(payload_copy)
+
+
+class NoResourceApiView(ApiView[NullResource, BaseAction], ABC):
+    """An API view that doesn't care about resources."""
+    def _get_resource(self) -> Optional[NullResource]:
+        return NullResource()
+
+
+class ResourceApiView(Generic[ResourceT], ApiView[ResourceT, ResourceAction], ABC):
+    """An API view that cares about a resource."""

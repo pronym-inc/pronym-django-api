@@ -18,8 +18,7 @@ class GetTokenTest(PronymApiTestCase):
     def setUp(self):
         PronymApiTestCase.setUp(self)
         self.my_password = 'passwordius'
-        self.account_member = ApiAccountMemberFactory(
-            user__password=self.my_password)
+        self.account_member = ApiAccountMemberFactory(user__password=self.my_password)
 
     def test_invalid_data(self):
         response = self.post(data={})
@@ -41,7 +40,7 @@ class GetTokenTest(PronymApiTestCase):
         self.assertIn("expires", response_data)
         # Token should allow access to an authenticated endpoint
         response = self.get(
-            data={'name': 'yo'},
+            data={'name': 'yo', 'email': 'gregg@keezles.com'},
             view=AuthenticatedSampleApiView.as_view(),
             auth_token=response_data['token'],
             use_authentication=True)

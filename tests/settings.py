@@ -40,3 +40,4 @@ TEMPLATES = [
         },
     }
 ]
+RAISE_ON_500 = False

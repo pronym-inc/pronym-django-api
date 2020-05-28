@@ -1,17 +1,25 @@
+"""
+An endpoint for users to receive a token to use for future authentication.
+"""
+from typing import Optional, Dict, Any, Union, Type
+
 from django import forms
 
 from pronym_api.models import ApiAccountMember
-from pronym_api.views.api_view import ApiView
-from pronym_api.views.processor import Processor
-from pronym_api.views.serializer import Serializer
-from pronym_api.views.validator import FormValidator
+from pronym_api.views.actions import BaseAction, NullResource, ApiProcessingFailure, NoResourceFormAction
+from pronym_api.views.api_view import NoResourceApiView, HttpMethod
 
 
-class GetTokenValidator(FormValidator):
+class CreateTokenForm(forms.Form):
+    """Validate a CreateToken request."""
+    found_api_account_member: Optional[ApiAccountMember]
     username = forms.CharField()
     password = forms.CharField()
 
     def clean(self):
+        """
+        Validate that the provided username and password belong to API Account member.
+        """
         data = self.cleaned_data
         invalid_error = 'Invalid username/password.'
         if 'username' in data and 'password' in data:
@@ -22,37 +30,46 @@ class GetTokenValidator(FormValidator):
                 raise forms.ValidationError(invalid_error)
             if not account_member.user.check_password(data['password']):
                 raise forms.ValidationError(invalid_error)
-            self.found_api_account_member = account_member
         return data
 
 
-class GetTokenProcessor(Processor):
-    def process(self):
-        # Generate the token
-        member = self.validator.found_api_account_member
-        return member.create_whitelist_entry()
+class CreateTokenResourceAction(NoResourceFormAction[CreateTokenForm]):
+    """Action to validate username and password and send back a token."""
+    def check_authorization(self, account_member: ApiAccountMember, resource: NullResource) -> bool:
+        """This will always be called unauthenticated."""
+        return True
 
-
-class GetTokenSerializer(Serializer):
-    def serialize(self):
-        whitelist_entry = self.processing_artifact
+    def execute(
+            self,
+            request: Dict[str, Any],
+            account_member: Optional[ApiAccountMember],
+            resource: NullResource
+    ) -> Union[ApiProcessingFailure, Dict[str, Any]]:
+        """Create a token for the user and send them back some info."""
+        member: ApiAccountMember = ApiAccountMember.objects.get(user__username=request['username'])
+        whitelist_entry = member.create_whitelist_entry()
         return {
             "token": whitelist_entry.encode(),
             "expires": whitelist_entry.get_expiration_date().strftime(
                 "%Y-%m-%dT%H:%M:%SZ")
         }
 
+    def _get_form_class(
+            self,
+            request: Dict[str, Any],
+            account_member: Optional[ApiAccountMember],
+            resource: NullResource
+    ) -> Type[CreateTokenForm]:
+        return CreateTokenForm
 
-class GetTokenApiView(ApiView):
-    endpoint_name = 'get-token'
-    methods = {
-        'POST': {
-            'validator': GetTokenValidator,
-            'processor': GetTokenProcessor,
-            'serializer': GetTokenSerializer
+
+class GetTokenApiView(NoResourceApiView):
+    """An endpoint to retrieve a token."""
+
+    def _get_action_configuration(self) -> Dict[HttpMethod, BaseAction]:
+        return {
+            HttpMethod.POST: CreateTokenResourceAction()
         }
-    }
-    require_authentication = False
 
-    redacted_request_payload_fields = ['password']
-    redacted_response_payload_fields = ['token']
+    def _get_endpoint_name(self) -> str:
+        return 'get-token'

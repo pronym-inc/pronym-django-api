@@ -3,14 +3,13 @@ from copy import deepcopy
 
 from pronym_api.test_utils.api_testcase import PronymApiTestCase
 
-from tests.factories import (
-    CategoryFactory, OrganizationFactory, UserAccountFactory)
+from tests.factories import CategoryFactory, OrganizationFactory, UserAccountFactory
 from tests.models import UserAccount
-from tests.test_views.model_view_sample import UserAccountModelApiView
+from tests.test_views.model_view_sample import UserAccountCollectionApiView, UserAccountDetailApiView
 
 
 class ModelViewRelationshipsTestCase(PronymApiTestCase):
-    view_class = UserAccountModelApiView
+    view_class = UserAccountCollectionApiView
 
     valid_data = {
         'name': 'Gregg Keezles',
@@ -23,11 +22,6 @@ class ModelViewRelationshipsTestCase(PronymApiTestCase):
         'categories': [
             {'name': 'Fun'},
             {'name': 'News'}
-        ],
-        'log_entries': [
-            {'name': 'Login'},
-            {'name': 'Logout'},
-            {'name': 'Register'}
         ]
     }
 
@@ -53,13 +47,6 @@ class ModelViewRelationshipsTestCase(PronymApiTestCase):
         self.assertEqual(account.categories.filter(name='News').count(), 1)
         self.assertEqual(len(data['categories']), 2)
 
-        self.assertEqual(account.log_entries.count(), 3)
-        self.assertEqual(account.log_entries.filter(name='Login').count(), 1)
-        self.assertEqual(account.log_entries.filter(name='Logout').count(), 1)
-        self.assertEqual(
-            account.log_entries.filter(name='Register').count(), 1)
-        self.assertEqual(len(data['log_entries']), 3)
-
     def test_create_with_using_ids(self):
         organization = OrganizationFactory()
         category1 = CategoryFactory()
@@ -72,7 +59,7 @@ class ModelViewRelationshipsTestCase(PronymApiTestCase):
 
         response = self.post(data=alt_data)
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, response.content)
 
         data = loads(response.content)
 
@@ -95,7 +82,7 @@ class ModelViewRelationshipsTestCase(PronymApiTestCase):
 
         response_data = loads(response.content)
 
-        self.assertIn('organization', response_data['errors'])
+        self.assertIn('organization', response_data['field_errors'])
 
     def test_create_nested_error(self):
         data = deepcopy(self.valid_data)
@@ -107,11 +94,11 @@ class ModelViewRelationshipsTestCase(PronymApiTestCase):
 
         response_data = loads(response.content)
 
-        self.assertIn('email', response_data['errors']['profile'])
+        self.assertIn('email', response_data['field_errors']['profile'])
 
 
 class ModelViewRelationshipsModifyTestCase(PronymApiTestCase):
-    view_class = UserAccountModelApiView
+    view_class = UserAccountDetailApiView
 
     valid_data = {
         'name': 'Gregg Keezles',
@@ -142,7 +129,6 @@ class ModelViewRelationshipsModifyTestCase(PronymApiTestCase):
 
         self.assertEqual(account.name, 'Gregg Keezles')
         self.assertEqual(account.profile.email, 'greggy@test.com')
-        self.assertEqual(len(account.log_entries.all()), 1)
         self.assertEqual(len(account.categories.all()), 1)
 
     def test_update_categories(self):
@@ -160,3 +146,33 @@ class ModelViewRelationshipsModifyTestCase(PronymApiTestCase):
         account = UserAccount.objects.get(id=self.account.id)
 
         self.assertEqual(len(account.categories.all()), 2)
+
+    def test_send_invalid_fk_object(self):
+        data = {
+            'profile': "meow"
+        }
+
+        response = self.patch(data=data)
+
+        self.assertEqual(response.status_code, 400, response.content)
+
+    def test_send_invalid_m2m_objects(self):
+        data = {
+            'categories': [
+                None,
+                "chunk"
+            ]
+        }
+
+        response = self.patch(data=data)
+
+        self.assertEqual(response.status_code, 400, response.content)
+
+    def test_send_invalid_m2m_value(self):
+        data = {
+            'categories': "mukket"
+        }
+
+        response = self.patch(data=data)
+
+        self.assertEqual(response.status_code, 400, response.content)

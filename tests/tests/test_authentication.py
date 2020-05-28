@@ -7,8 +7,7 @@ import jwt
 
 from pronym_api.test_utils.api_testcase import PronymApiTestCase
 
-from tests.test_views.authenticated_sample import (
-    AuthenticatedSampleApiView)
+from tests.test_views.authenticated_sample import AuthenticatedSampleApiView
 
 
 class AuthenticationApiTest(PronymApiTestCase):

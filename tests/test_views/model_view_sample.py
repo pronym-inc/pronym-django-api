@@ -1,22 +1,52 @@
-from pronym_api.views.model_view import ModelApiView
+"""A sample model view setup."""
+from typing import Type
+
+from django.db.models import QuerySet
+
+from pronym_api.views.model_view.views import ModelCollectionApiView, ModelDetailApiView
 
 from tests.models import Organization, UserAccount
 
 
-class OrganizationModelApiView(ModelApiView):
-    endpoint_name = 'organization'
+class OrganizationCollectionApiView(ModelCollectionApiView[Organization]):
+    """Fake api view."""
     require_authentication = False
-    model = Organization
+
+    def _get_model(self) -> Type[Organization]:
+        return Organization
+
+    def _get_queryset(self) -> 'QuerySet[Organization]':
+        return Organization.objects.all()
 
 
-class UserAccountModelApiView(ModelApiView):
-    endpoint_name = 'user-profile'
+class OrganizationDetailApiView(ModelDetailApiView[Organization]):
+    """Fake detail view"""
     require_authentication = False
-    model = UserAccount
 
-    many_to_many_fields = ['categories']
-    one_to_many_fields = [
-        {'name': 'log_entries'}
-    ]
-    many_to_one_fields = ['organization']
-    one_to_one_fields = ['profile']
+    def _get_model(self) -> Type[Organization]:
+        return Organization
+
+    def _get_queryset(self) -> 'QuerySet[Organization]':
+        return Organization.objects.all()
+
+
+class UserAccountCollectionApiView(ModelCollectionApiView[UserAccount]):
+    """Faker API view"""
+    require_authentication = False
+
+    def _get_model(self) -> Type[UserAccount]:
+        return UserAccount
+
+    def _get_queryset(self) -> 'QuerySet[UserAccount]':
+        return UserAccount.objects.all()
+
+
+class UserAccountDetailApiView(ModelDetailApiView[UserAccount]):
+    """Faker API view"""
+    require_authentication = False
+
+    def _get_model(self) -> Type[UserAccount]:
+        return UserAccount
+
+    def _get_queryset(self) -> 'QuerySet[UserAccount]':
+        return UserAccount.objects.all()

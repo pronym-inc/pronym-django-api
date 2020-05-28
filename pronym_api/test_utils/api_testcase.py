@@ -1,13 +1,15 @@
+from typing import ClassVar, Type, Dict, Any
+
 from django.test import override_settings, RequestFactory, TestCase
 
-from .factories import ApiAccountMemberFactory
+from pronym_api.views import ApiView
 
 
 @override_settings(RAISE_ON_500=True)
 class PronymApiTestCase(TestCase):  # pragma: no cover
-    base_url = '/'
-    view_class = None
-    valid_data = {}
+    base_url: str = '/'
+    view_class: ClassVar[Type[ApiView]]
+    valid_data: ClassVar[Dict[str, Any]] = {}
 
     def delete(self, **kwargs):
         return self.send_request('delete', **kwargs)
@@ -48,6 +50,7 @@ class PronymApiTestCase(TestCase):  # pragma: no cover
     def setUp(self):
         self.request_factory = RequestFactory()
         if self.should_use_authentication():
+            from .factories import ApiAccountMemberFactory
             self.account_member = ApiAccountMemberFactory()
             self.whitelist_entry = self.account_member.create_whitelist_entry()
             self.auth_token = self.whitelist_entry.encode()
@@ -61,7 +64,7 @@ class PronymApiTestCase(TestCase):  # pragma: no cover
         if data is None:
             data = self.get_valid_data(**data_kwargs)
         request_url = url or self.get_url()
-        allowed_methods = ('get', 'patch', 'post', 'put', 'delete')
+        allowed_methods = ('get', 'patch', 'post', 'put', 'delete', 'head')
         if method not in allowed_methods:
             raise Exception('Invalid method: {0}'.format(method))
         kwargs = {'data': data}

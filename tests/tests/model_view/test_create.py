@@ -4,11 +4,11 @@ from pronym_api.test_utils.api_testcase import PronymApiTestCase
 
 from tests.factories import OrganizationFactory
 from tests.models import Organization
-from tests.test_views.model_view_sample import OrganizationModelApiView
+from tests.test_views.model_view_sample import OrganizationCollectionApiView
 
 
 class ModelViewCreateTestCase(PronymApiTestCase):
-    view_class = OrganizationModelApiView
+    view_class = OrganizationCollectionApiView
 
     valid_data = {'name': 'Pronym Inc'}
 

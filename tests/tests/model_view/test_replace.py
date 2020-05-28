@@ -4,11 +4,11 @@ from pronym_api.test_utils.api_testcase import PronymApiTestCase
 
 from tests.factories import OrganizationFactory
 from tests.models import Organization
-from tests.test_views.model_view_sample import OrganizationModelApiView
+from tests.test_views.model_view_sample import OrganizationDetailApiView
 
 
 class ModelViewReplaceTestCase(PronymApiTestCase):
-    view_class = OrganizationModelApiView
+    view_class = OrganizationDetailApiView
 
     valid_data = {
         'name': 'Pronym Corp',
@@ -56,4 +56,4 @@ class ModelViewReplaceTestCase(PronymApiTestCase):
 
         response = self.put(data=incomplete_data)
 
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 400, response.content)

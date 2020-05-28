@@ -19,14 +19,13 @@ class LoggingApiTest(PronymApiTestCase):
         entry = self.account_member.log_entries.all()[0]
 
         self.assertEqual(entry.status_code, 200)
-        self.assertEqual(entry.endpoint_name, self.view_class.endpoint_name)
+        self.assertEqual(entry.endpoint_name, "sample-api")
         self.assertEqual(entry.source_ip, 'Unknown')
         self.assertEqual(entry.path, '/')
         self.assertEqual(entry.host, 'testserver')
         self.assertEqual(entry.port, 80)
         self.assertTrue(entry.is_authenticated)
         self.assertEqual(entry.request_method, 'POST')
-        print(entry.request_headers)
         self.assertIn(
             'HTTP_AUTHORIZATION=******',
             entry.request_headers)

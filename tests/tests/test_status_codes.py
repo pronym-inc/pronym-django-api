@@ -1,9 +1,7 @@
-from json import loads
+"""Tests to verify status codes return properly in different scenarios."""
+from json import dumps
 
 from django.test import override_settings
-
-from pronym_api.views.api_view import ApiValidationError
-from pronym_api.views.processor import Processor
 
 from pronym_api.test_utils.api_testcase import PronymApiTestCase
 
@@ -30,8 +28,12 @@ class StatusCodeApiTest(PronymApiTestCase):
         self.assertEqual(response.status_code, 400, response.content)
 
     def test_invalid_data_should_give_400(self):
-        response = self.post(data={})
+        response = self.post(data='')
         self.assertEqual(response.status_code, 400, response.content)
+
+    def test_non_object_json_should_give_400(self):
+        response = self.post(data='[]')
+        self.assertEqual(response.status_code, 400)
 
     def test_bad_credentials_should_give_401(self):
         response = self.post(auth_token='bogus')
@@ -51,60 +53,34 @@ class StatusCodeApiTest(PronymApiTestCase):
         response = self.put()
         self.assertEqual(response.status_code, 405, response.content)
 
+    def test_unauthorized_should_give_403(self):
+        # Our endpoint is written to not allow anyone who has first name "Badman" in
+        self.account_member.user.first_name = "Badman"
+        self.account_member.user.save()
 
-class ProcessorValidationErrorProcessor(Processor):
-    def process(self):
-        raise ApiValidationError({'test': 'test!'})
-
-
-class ProcessorValidationErrorStatusCodeApiTest(PronymApiTestCase):
-    class ProcessorValidationErrorSampleApiView(AuthenticatedSampleApiView):
-        methods = {
-            'POST': {
-                'processor': ProcessorValidationErrorProcessor
-            }
-        }
-
-    view_class = ProcessorValidationErrorSampleApiView
-
-    def test(self):
         response = self.post()
+        self.assertEqual(response.status_code, 403, response.content)
 
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('test', loads(response.content)['errors'])
+    def test_processing_error_should_relay_error(self):
+        # Our endpoint is written to give a processing error when first name is larry in data.
+        data = self.valid_data.copy()
+        data['name'] = 'Larry'
 
+        response = self.post(data=dumps(data))
 
-class UnauthorizedStatusCodeApiTest(PronymApiTestCase):
-    class UnauthorizedSampleApiView(AuthenticatedSampleApiView):
-        def check_authorization(self):
-            return False
+        self.assertEqual(response.status_code, 409, response.content)
 
-    view_class = UnauthorizedSampleApiView
+    def test_unknown_method_should_give_405(self):
+        response = self.send_request('head')
 
-    def test(self):
-        response = self.post()
+        self.assertEqual(response.status_code, 405)
 
-        self.assertEqual(response.status_code, 403)
+    @override_settings(RAISE_ON_500=False)
+    def test_exception_thrown_should_give_500(self):
+        # Our endpoint will freak out if the name is "Funkhouse"
+        data = self.valid_data.copy()
+        data['name'] = 'Funkhouse'
 
+        response = self.post(data=dumps(data))
 
-class BrokenProcessor(Processor):
-    def process(self):
-        raise Exception
-
-
-@override_settings(RAISE_ON_500=False)
-class BrokenStatusCodeApiTest(PronymApiTestCase):
-
-    class BrokenSampleApiView(AuthenticatedSampleApiView):
-        methods = {
-            'POST': {
-                'processor': BrokenProcessor
-            }
-        }
-
-    view_class = BrokenSampleApiView
-
-    def test_some_internal_exception(self):
-        response = self.post()
-
-        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.status_code, 500, response.content)

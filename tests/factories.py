@@ -1,7 +1,7 @@
 import factory
 
 from tests.models import (
-    Category, Organization, UserAccount, UserLogEntry, UserProfile)
+    Category, Organization, UserAccount, UserProfile, AccountUpdate)
 
 
 class UserProfileFactory(factory.django.DjangoModelFactory):
@@ -34,9 +34,6 @@ class UserAccountFactory(factory.django.DjangoModelFactory):
     organization = factory.SubFactory(OrganizationFactory)
 
 
-class UserLogEntryFactory(factory.django.DjangoModelFactory):
+class AccountUpdateFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = UserLogEntry
-
-    user = factory.SubFactory(UserAccountFactory)
-    name = factory.Sequence(lambda n: "Action {0}".format(n))
+        model = AccountUpdate
