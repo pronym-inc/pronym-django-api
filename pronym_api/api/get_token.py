@@ -1,7 +1,7 @@
 """
 An endpoint for users to receive a token to use for future authentication.
 """
-from typing import Optional, Dict, Any, Union, Type
+from typing import Optional, Dict, Any, Union, Type, ClassVar
 
 from django import forms
 
@@ -65,6 +65,7 @@ class CreateTokenResourceAction(NoResourceFormAction[CreateTokenForm]):
 
 class GetTokenApiView(NoResourceApiView):
     """An endpoint to retrieve a token."""
+    require_authentication: ClassVar[bool] = True
 
     def _get_action_configuration(self) -> Dict[HttpMethod, BaseAction]:
         return {
