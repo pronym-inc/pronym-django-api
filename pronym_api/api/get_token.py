@@ -65,7 +65,7 @@ class CreateTokenResourceAction(NoResourceFormAction[CreateTokenForm]):
 
 class GetTokenApiView(NoResourceApiView):
     """An endpoint to retrieve a token."""
-    require_authentication: ClassVar[bool] = True
+    require_authentication: ClassVar[bool] = False
 
     def _get_action_configuration(self) -> Dict[HttpMethod, BaseAction]:
         return {
