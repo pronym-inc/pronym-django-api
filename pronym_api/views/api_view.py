@@ -114,8 +114,7 @@ class ApiView(Generic[ResourceT, ActionT], View, ABC):
         except Exception as e:
             if settings.RAISE_ON_500:  # pragma: no cover
                 raise e
-            else:
-                content = 'Server Error'
+            content = 'Server Error'
             response = HttpResponse(content, status=500)
         # Whatever happened, log it.
         self._create_log_entry(response)
@@ -126,6 +125,8 @@ class ApiView(Generic[ResourceT, ActionT], View, ABC):
         return True
 
     def _get_action(self) -> Optional[ActionT]:
+        if self._http_method not in self._get_allowed_methods():
+            return None
         return self._get_action_configuration().get(self._http_method)
 
     @abstractmethod
@@ -289,6 +290,17 @@ class ApiView(Generic[ResourceT, ActionT], View, ABC):
             return HttpResponse(status=status_code)
         else:
             return JsonResponse(response_data, status=status_code)
+
+    def _get_allowed_methods(self) -> List[HttpMethod]:
+        """Return the list of allowed http methods."""
+        return [
+            HttpMethod.GET,
+            HttpMethod.POST,
+            HttpMethod.DELETE,
+            HttpMethod.POST,
+            HttpMethod.PUT,
+            HttpMethod.PATCH
+        ]
 
     def _get_redacted_request_payload_fields(self) -> List[str]:
         """
