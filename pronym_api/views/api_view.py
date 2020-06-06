@@ -8,7 +8,8 @@ from json import JSONDecodeError, dumps, loads
 from typing import Dict, List, Any, Optional, Generic, TypeVar, ClassVar, Union
 
 from django.conf import settings
-from django.http import HttpResponse, JsonResponse, HttpRequest
+from django.http import JsonResponse, HttpRequest
+from django.http.response import HttpResponseBase, HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
@@ -91,7 +92,7 @@ class ApiView(Generic[ResourceT, ActionT], View, ABC):
         self.authenticated_account_member = None
         self._resource = None
 
-    def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+    def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponseBase:
         """
         The dispatch method handles an incoming HTTP request before it has been delegated based on the request method.
         Here, we will do various checks to validate the request and, if those are successful, we will attempt to process
@@ -175,7 +176,7 @@ class ApiView(Generic[ResourceT, ActionT], View, ABC):
                 )
         )
 
-    def _create_log_entry(self, response: HttpResponse) -> LogEntry:
+    def _create_log_entry(self, response: HttpResponseBase) -> LogEntry:
         """
         Create a log entry for the given HttpResponse.
         :param response: The HttpResponse that will be sent to the user.
@@ -206,7 +207,7 @@ class ApiView(Generic[ResourceT, ActionT], View, ABC):
             request_errors: Optional[List[str]],
             field_errors: Optional[Dict[str, Union[List[str], Dict[str, Any]]]],
             status: int = 400
-    ) -> HttpResponse:
+    ) -> HttpResponseBase:
         """
         Generate the error response for this endpoint.
         :param request_errors: Errors that apply to the request as a whole (e.g. span multiple fields or bad JSON)
@@ -231,7 +232,7 @@ class ApiView(Generic[ResourceT, ActionT], View, ABC):
     def _deserialize(self) -> Dict[str, Any]:
         return self._deserializer.deserialize(self.request)
 
-    def _get_response(self) -> HttpResponse:
+    def _get_response(self) -> HttpResponseBase:
         # Check authentication, if we need to.
         if not self._check_authentication():
             return HttpResponse(status=401)
@@ -279,7 +280,7 @@ class ApiView(Generic[ResourceT, ActionT], View, ABC):
         # We made it!  Our request processed successfully.  Send back a 200.
         return self._generate_response(result, 200)
 
-    def _generate_response(self, response_data: Optional[Dict[str, Any]], status_code: int) -> HttpResponse:
+    def _generate_response(self, response_data: Optional[Dict[str, Any]], status_code: int) -> HttpResponseBase:
         """
         Generate a response back to the user
         :param response_data: The payload to be sent as JSON
@@ -334,7 +335,7 @@ class ApiView(Generic[ResourceT, ActionT], View, ABC):
                 "{0}={1}".format(name, cleaned_value))
         return "\n".join(header_components)
 
-    def _get_redacted_response_payload_str(self, response: HttpResponse) -> str:
+    def _get_redacted_response_payload_str(self, response: HttpResponseBase) -> str:
         if len(response.content) == 0:
             return ''
         try:
