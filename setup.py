@@ -1,6 +1,7 @@
 from setuptools import find_packages, setup
 
-install_dependencies = ['django>=2.2.4', 'PyJWT==1.7.1', 'factory_boy==2.12.0', 'enforce-typing==1.0.0.post1']
+install_dependencies = [
+    'django>=2.2.4', 'PyJWT==1.7.1', 'factory_boy==2.12.0', 'enforce-typing==1.0.0.post1', 'celery==4.3.0']
 test_dependencies = [
     'pytest-django==3.5.1', 'coverage==4.5.4',
     'pytest-cov==2.7.1', 'django-stubs==1.5.0']
