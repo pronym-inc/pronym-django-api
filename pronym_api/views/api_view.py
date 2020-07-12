@@ -262,7 +262,7 @@ class ApiView(View):
         try:
             payload_copy = loads(response.content)
         except JSONDecodeError:  # pragma: no cover
-            return "Could not deserialize body."
+            return response.content
         for redacted_key in self.get_redacted_response_payload_fields():
             if redacted_key in payload_copy:
                 payload_copy[redacted_key] = self.REDACTED_STRING
