@@ -14,7 +14,14 @@ class LogEntry(models.Model):
         'ApiAccountMember',
         null=True,
         related_name='log_entries',
-        on_delete=models.CASCADE)
+        on_delete=models.SET_NULL)
+    api_account = models.ForeignKey(
+        'ApiAccount',
+        null=True,
+        related_name='log_entries',
+        on_delete=models.SET_NULL,
+        db_index=True
+    )
     request_method = models.CharField(max_length=255)
     request_headers = models.TextField()
     request_payload = models.TextField()
@@ -24,7 +31,8 @@ class LogEntry(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['datetime_added']),
-            models.Index(fields=['authenticated_profile'])
+            models.Index(fields=['authenticated_profile']),
+            models.Index(fields=['api_account'])
         ]
 
     def __str__(self):  # pragma: no cover
