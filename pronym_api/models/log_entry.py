@@ -19,8 +19,7 @@ class LogEntry(models.Model):
         'ApiAccount',
         null=True,
         related_name='log_entries',
-        on_delete=models.SET_NULL,
-        db_index=True
+        on_delete=models.SET_NULL
     )
     request_method = models.CharField(max_length=255)
     request_headers = models.TextField()
@@ -30,9 +29,7 @@ class LogEntry(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=['datetime_added']),
-            models.Index(fields=['authenticated_profile']),
-            models.Index(fields=['api_account'])
+            models.Index(fields=['api_account', 'datetime_added'])
         ]
 
     def __str__(self):  # pragma: no cover
