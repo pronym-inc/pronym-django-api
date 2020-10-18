@@ -7,7 +7,11 @@ from django.db.models import F
 def update_api_account(apps, schema_editor):
     LogEntry = apps.get_model('pronym_api', 'LogEntry')
 
-    LogEntry.objects.all().update(api_account=F('authenticated_profile__api_account'))
+    LogEntry\
+        .objects\
+        .select_related('authenticated_profile')\
+        .all()\
+        .update(api_account=F('authenticated_profile__api_account'))
 
 
 class Migration(migrations.Migration):
