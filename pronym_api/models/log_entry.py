@@ -3,7 +3,7 @@ from django.utils.timezone import now
 
 
 class LogEntry(models.Model):
-    datetime_added = models.DateTimeField(default=now)
+    datetime_added = models.DateTimeField(default=now, db_index=True)
     endpoint_name = models.CharField(max_length=255)
     source_ip = models.CharField(max_length=255)
     path = models.CharField(max_length=255)
@@ -26,11 +26,6 @@ class LogEntry(models.Model):
     request_payload = models.TextField()
     response_payload = models.TextField()
     status_code = models.PositiveIntegerField()
-
-    class Meta:
-        indexes = [
-            models.Index(fields=['api_account', 'datetime_added'])
-        ]
 
     def __str__(self):  # pragma: no cover
         return "[{0}] {1} {2} -> {3}".format(
