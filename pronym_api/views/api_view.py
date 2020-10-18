@@ -127,7 +127,7 @@ class ApiView(View):
             port=self.request.get_port(),
             is_authenticated=self.authenticated_account_member is not None,
             authenticated_profile=self.authenticated_account_member,
-            api_account=self.authenticated_account_member.api_account,
+            api_account=self.authenticated_account_member.api_account if self.authenticated_account_member is not None else None,
             request_method=self.request.method,
             request_headers=header_string,
             request_payload=redacted_request_payload_string,
