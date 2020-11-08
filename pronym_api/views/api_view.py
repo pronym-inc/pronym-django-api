@@ -106,6 +106,8 @@ class ApiView(View):
         return self.authenticated_account_member is not None
 
     def check_authorization(self):
+        if self.authenticated_account_member is None:
+            return True
         user_permissions = set([])
         for permission in self.authenticated_account_member.permissions.all():
             user_permissions.add(permission.name)
