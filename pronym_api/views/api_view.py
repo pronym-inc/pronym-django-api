@@ -79,6 +79,9 @@ class ApiView(View):
     redacted_request_payload_fields = []
     # Which fields should we scrub from the response data for logging?
     redacted_response_payload_fields = []
+    # What permissions are required to use this endpoint?  Specify as strings, mapping to names of permissions
+    # associated with the api account.
+    required_permissions = []
 
     def __init__(self, *args, **kwargs):
         View.__init__(self, *args, **kwargs)
@@ -103,6 +106,14 @@ class ApiView(View):
         return self.authenticated_account_member is not None
 
     def check_authorization(self):
+        user_permissions = set([])
+        for permission in self.authenticated_account_member.permissions.all():
+            user_permissions.add(permission.name)
+        for permission in self.authenticated_account_member.api_account.permissions.all():
+            user_permissions.add(permission.name)
+        for permission in self.get_required_permissions():
+            if permission not in user_permissions:
+                return False
         return True
 
     def check_method_allowed(self):
@@ -268,6 +279,9 @@ class ApiView(View):
             if redacted_key in payload_copy:
                 payload_copy[redacted_key] = self.REDACTED_STRING
         return dumps(payload_copy)
+
+    def get_required_permissions(self):
+        return self.required_permissions
 
     def get_serializer(self, validator, processing_artifact):
         serializer_cls = self.get_serializer_class()

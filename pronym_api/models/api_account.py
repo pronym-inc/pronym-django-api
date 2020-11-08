@@ -7,6 +7,7 @@ from .api_account_member import ApiAccountMember
 class ApiAccount(models.Model):
     name = models.CharField(max_length=255)
     is_active = models.BooleanField(default=True)
+    permissions = models.ManyToManyField('ApiPermission', related_name='api_accounts')
 
     def __str__(self):
         return self.name

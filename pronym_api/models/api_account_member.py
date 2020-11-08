@@ -15,6 +15,7 @@ class ApiAccountMember(models.Model):
         'auth.User',
         related_name='api_members',
         on_delete=models.CASCADE)
+    permissions = models.ManyToManyField('ApiPermission', related_name='api_account_members')
 
     class Meta:
         indexes = [
