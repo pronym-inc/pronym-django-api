@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-install_dependencies = ['django==3.0.8', 'PyJWT==1.7.1', 'factory_boy==2.12.0', 'celery==4.3.0']
+install_dependencies = ['django==3.0.8', 'PyJWT==1.7.1', 'factory_boy==2.12.0', 'celery>=4.3.0']
 test_dependencies = [
     'pytest-django==3.5.1', 'coverage==4.5.4',
     'pytest-cov==2.7.1', 'mypy==0.780']
